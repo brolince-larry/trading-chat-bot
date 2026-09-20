@@ -1,0 +1,159 @@
+# Forex AI Market Scanner
+
+A deterministic forex market-analysis, strategy, and risk-management engine,
+exposed over a REST API. This is the Phase 1-6 backend "quantitative
+trading platform" core described in the project spec: **reliable market
+data → deterministic analysis → tested strategies → risk engine → pair
+scanner**. It intentionally does not include an LLM/chat layer, broker
+execution, or a frontend yet — see [Roadmap](#roadmap).
+
+**No output from this system is a trade recommendation.** Every setup is
+conditional ("a bullish continuation setup is developing if X confirms")
+and carries an explicit invalidation condition. Position sizing and risk
+checks are informational math, not investment advice. Nothing here should
+be connected to a live trading account without independent review.
+
+## Architecture
+
+```
+app/
+├── domain/            # Pure business logic, no framework/IO dependencies
+│   ├── market/         # Candle/Price/SymbolSpec value objects + MarketDataProvider port
+│   ├── analysis/        # Indicators, swing/trend/regime detection, TimeframeAnalysis
+│   ├── strategies/       # Trend-pullback, breakout-retest, range-reversion strategies
+│   ├── risk/            # Pip value, position sizing, exposure, risk-limit validation
+│   └── scanner/         # Setup quality scoring + multi-pair PairScanner orchestrator
+├── infrastructure/     # Adapters implementing domain ports
+│   ├── market_data/     # SimulatedMarketDataProvider (dev/test), OandaMarketDataProvider
+│   └── database/        # SQLAlchemy models, session, repositories
+├── api/                # FastAPI routes (thin — delegate to domain services)
+├── schemas/            # Pydantic request/response DTOs
+├── config.py           # Settings (env-driven)
+└── main.py             # App entrypoint
+```
+
+This follows the dependency-inversion rule from the spec: `app.domain`
+defines `MarketDataProvider` as a `Protocol`; `app.infrastructure` provides
+concrete implementations (simulated data for local dev/tests, a real OANDA
+v20 REST adapter for production). Routes are thin and only translate
+HTTP <-> domain calls; all decision logic (trend/regime classification,
+strategy rules, position sizing, risk limits) lives in `app.domain` and is
+covered by tests that don't touch the API or a database.
+
+### Why deterministic code, not an LLM, makes the trading decisions
+
+Strategies, indicators, and risk math are plain Python functions with
+explicit numeric thresholds — not LLM calls. An LLM chat layer (a future
+phase) would call these as tools and explain their output in natural
+language, but it would never invent price levels, position sizes, or
+risk-limit decisions itself.
+
+## What's implemented
+
+- **Market data**: `SimulatedMarketDataProvider` (deterministic, seeded
+  synthetic OHLC — no credentials needed) and `OandaMarketDataProvider`
+  (real OANDA v20 REST API; requires `OANDA_API_KEY`).
+- **Indicators**: SMA, EMA, RSI, ATR, ADX/+DI/-DI, MACD, Bollinger Bands
+  (Wilder's smoothing where applicable).
+- **Structure**: fractal-based swing high/low detection, HH/HL vs LH/LL
+  trend classification, support/resistance levels, trending/ranging/
+  transitioning regime classification from ADX.
+- **Strategies**: trend continuation/pullback, breakout-and-retest, and
+  range mean-reversion — each returns a `TradeSetup` with an explicit
+  status (`rejected` / `watching` / `confirmed` / `invalidated`), entry
+  trigger, structure- and volatility-aware stop-loss, R-multiple take
+  profits, and an invalidation condition. None of them ever claim
+  certainty.
+- **Risk engine**: correct pip-value math for any base/quote/account
+  currency combination (not a hardcoded "$10/pip"), position sizing from
+  account risk %, a currency-exposure aggregator (so three "different"
+  long-USD-adjacent trades show up as one concentrated bet), and a
+  configurable risk-limit validator (max risk/trade, max daily loss, max
+  open positions, max spread, min risk/reward, max correlated exposure).
+- **Scanner**: runs every strategy against every configured symbol across
+  a higher (context) and entry timeframe, scores each actionable setup
+  0-100 on objective factors (this is a **setup quality score, not a win
+  probability**), and ranks candidates.
+- **API**: `/api/v1/market/*`, `/api/v1/analysis/{symbol}`,
+  `/api/v1/scanner/run`, `/api/v1/risk/position-size`. See `/docs` for the
+  live OpenAPI schema once running.
+
+11 major/cross pairs are configured by default (`app/domain/market/symbols.py`).
+
+## Running locally
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env   # defaults to the simulated provider, no DB required to serve most endpoints
+uvicorn app.main:app --reload
+```
+
+Open `http://localhost:8000/docs` for interactive API docs, or:
+
+```bash
+curl -s -X POST http://localhost:8000/api/v1/scanner/run | jq
+```
+
+### With Docker Compose (Postgres included)
+
+```bash
+docker compose up --build
+```
+
+### Tests
+
+```bash
+pytest
+```
+
+73 tests cover indicator math, structure/regime classification, all three
+strategies' decision boundaries (reject/watch/confirm, both directions),
+pip value and position sizing edge cases, risk-limit validation, the
+scanner end to end against the simulated provider, and the API layer.
+
+## Configuration
+
+All settings are environment-driven (see `.env.example`); `app/config.py`
+is the single place they're read. Notably:
+
+- `MARKET_DATA_PROVIDER=simulated` (default) needs no credentials.
+- `MARKET_DATA_PROVIDER=oanda` requires `OANDA_API_KEY`. The key is read
+  only from settings/environment and is never logged, returned in an API
+  response, or passed to an LLM.
+- The database is optional for the analysis/scanner/risk endpoints, which
+  are pure in-memory computation. `init_db()` degrades gracefully (logs a
+  warning, doesn't crash the app) if Postgres isn't reachable at startup.
+
+## Security notes
+
+- All API inputs are validated with Pydantic (bounded numeric ranges,
+  symbol allowlists, currency-code format, request size limits on scans).
+- Unhandled exceptions return a generic `500` with no internal detail;
+  full tracebacks are only logged server-side.
+- Money math uses `Decimal` throughout the risk engine — never `float` —
+  to avoid rounding drift in position sizing.
+- No secrets are hardcoded; broker credentials come from environment
+  variables only.
+
+## Roadmap (not yet built)
+
+Following the phased plan in the project spec:
+
+- **AI chat layer**: an LLM with function-calling access to
+  `scan_all_pairs`, `get_pair_analysis`, `calculate_position_size`, etc.,
+  that explains structured output in natural language — never inventing
+  numbers itself.
+- **Economic calendar / news-risk integration**: currently the scanner's
+  "session/news" scoring factor is a neutral placeholder score, clearly
+  documented as such in `app/domain/scanner/scoring.py`, until a real
+  calendar feed is wired in.
+- **Backtesting engine** with realistic spread/slippage modeling and the
+  standard performance metrics (expectancy, profit factor, drawdown).
+- **Paper trading** and, only after that, **demo broker execution** with
+  manual approval — per the spec, never automated live execution as a
+  first step.
+- **Frontend dashboard** (Next.js + TradingView Lightweight Charts) and a
+  **WebSocket** layer for live updates.
+- **Celery/Redis** for scheduled background scanning instead of
+  synchronous on-request scans.

@@ -1,0 +1,9 @@
+[project]
+name = "forex-ai-market-scanner"
+version = "0.1.0"
+description = "Deterministic forex market analysis, strategy, and risk-management API."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
