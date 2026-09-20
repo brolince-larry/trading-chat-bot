@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     default_account_currency: str = "USD"
     default_risk_percent: float = 1.0
 
-    cors_allowed_origins: list[str] = ["http://localhost:3000"]
+    cors_allowed_origins: list[str] = ["http://localhost:5173"]
 
 
 @lru_cache

@@ -33,6 +33,12 @@ def test_pip_value_uses_provided_conversion_rate():
     assert value == Decimal("0.0001") * Decimal("0.90")
 
 
+def test_pip_value_never_serializes_in_scientific_notation():
+    eur_usd = get_symbol("EUR_USD")
+    value = pip_value_per_unit(eur_usd, account_currency="EUR", quote_to_account_rate=Decimal("500"))
+    assert "E" not in str(value)
+
+
 # --- position sizing ---------------------------------------------------------
 
 
@@ -79,6 +85,25 @@ def test_position_size_rejects_equal_entry_and_stop():
             symbol=eur_usd,
             account_currency="USD",
         )
+
+
+def test_position_size_never_serializes_pip_distance_in_scientific_notation():
+    # Decimal('1.1') - Decimal('1.095') divided by pip_size (0.0001) is
+    # exactly Decimal('5E+1') before normalization — str()'d straight into
+    # an API response that would read "5E+1 pips" instead of "50 pips".
+    eur_usd = get_symbol("EUR_USD")
+    result = calculate_position_size(
+        account_balance=Decimal("10000"),
+        risk_percent=Decimal("1"),
+        entry_price=Decimal("1.1"),
+        stop_loss_price=Decimal("1.095"),
+        symbol=eur_usd,
+        account_currency="USD",
+    )
+    assert str(result.stop_distance_pips) == "50"
+    assert "E" not in str(result.risk_amount)
+    assert "E" not in str(result.raw_units)
+    assert "E" not in str(result.units)
 
 
 def test_position_size_rejects_invalid_risk_percent():

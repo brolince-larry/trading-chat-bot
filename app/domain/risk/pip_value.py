@@ -13,6 +13,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.domain.market.models import SymbolSpec
+from app.domain.risk.decimal_utils import to_plain
 
 
 def pip_value_per_unit(
@@ -35,4 +36,4 @@ def pip_value_per_unit(
             f"required to price {symbol.name} in {account_currency}."
         )
 
-    return symbol.pip_size * quote_to_account_rate
+    return to_plain(symbol.pip_size * quote_to_account_rate)

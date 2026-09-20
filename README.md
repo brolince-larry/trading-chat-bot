@@ -1,11 +1,22 @@
 # Forex AI Market Scanner
 
-A deterministic forex market-analysis, strategy, and risk-management engine,
-exposed over a REST API. This is the Phase 1-6 backend "quantitative
-trading platform" core described in the project spec: **reliable market
-data → deterministic analysis → tested strategies → risk engine → pair
-scanner**. It intentionally does not include an LLM/chat layer, broker
-execution, or a frontend yet — see [Roadmap](#roadmap).
+A deterministic forex market-analysis, strategy, and risk-management engine
+(FastAPI backend + SvelteKit dashboard). This is the Phase 1-6
+"quantitative trading platform" core described in the project spec:
+**reliable market data → deterministic analysis → tested strategies → risk
+engine → pair scanner**, with a lightweight dashboard on top. It
+intentionally does not include an LLM/chat layer or broker execution yet —
+see [Roadmap](#roadmap).
+
+**Backend: FastAPI (Python).** Kept from the original build — genuinely
+lightweight (async ASGI, minimal overhead) for this workload, where the
+bottleneck is market-data I/O, not language speed, and it already has 75
+passing tests behind it.
+
+**Frontend: SvelteKit + TypeScript + Tailwind CSS.** Chosen for being
+"optimized and lightweight": Svelte compiles away the framework at build
+time (no virtual DOM, no hydration overhead like React/Next.js), which
+suits a dashboard that's mostly live-updating tables and numbers.
 
 **No output from this system is a trade recommendation.** Every setup is
 conditional ("a bullish continuation setup is developing if X confirms")
@@ -16,6 +27,12 @@ be connected to a live trading account without independent review.
 ## Architecture
 
 ```
+web/                    # SvelteKit dashboard
+├── src/lib/api/         # Typed fetch client + TypeScript types mirroring app/schemas
+├── src/lib/components/  # Shared UI (TimeframeCard, etc.)
+├── src/lib/format.ts    # Display formatting helpers
+└── src/routes/          # / (scanner), /analysis/[symbol], /risk (position size)
+
 app/
 ├── domain/            # Pure business logic, no framework/IO dependencies
 │   ├── market/         # Candle/Price/SymbolSpec value objects + MarketDataProvider port
@@ -101,16 +118,44 @@ curl -s -X POST http://localhost:8000/api/v1/scanner/run | jq
 docker compose up --build
 ```
 
+### Frontend dashboard
+
+```bash
+cd web
+pnpm install
+cp .env.example .env   # PUBLIC_API_BASE_URL, defaults to http://localhost:8000
+pnpm run dev --open
+```
+
+Requires the backend running on `http://localhost:8000` (its CORS default
+already allows the SvelteKit dev server at `http://localhost:5173`). Three
+pages: the scanner dashboard (`/`), a pair's higher/entry timeframe
+analysis (`/analysis/[symbol]`), and the position-size calculator
+(`/risk`).
+
 ### Tests
 
 ```bash
-pytest
+pytest              # backend: 75 tests
+cd web && pnpm run check && pnpm run lint   # frontend: types + lint
 ```
 
-73 tests cover indicator math, structure/regime classification, all three
-strategies' decision boundaries (reject/watch/confirm, both directions),
-pip value and position sizing edge cases, risk-limit validation, the
-scanner end to end against the simulated provider, and the API layer.
+The backend suite covers indicator math, structure/regime classification,
+all three strategies' decision boundaries (reject/watch/confirm, both
+directions), pip value and position sizing edge cases (including a
+Decimal-serialization regression — see Known gotchas below), risk-limit
+validation, the scanner end to end against the simulated provider, and the
+API layer.
+
+### Known gotchas
+
+- **Decimal scientific notation**: `Decimal` division/multiplication can
+  legitimately produce a result with a positive exponent (e.g.
+  `Decimal('0.0050') / Decimal('0.0001') == Decimal('5E+1')`), which
+  `str()`-serializes as `"5E+1"` instead of `"50"` in API responses. Fixed
+  once in `app/domain/risk/decimal_utils.to_plain`, applied at every
+  Decimal result in the risk engine — if you add new Decimal arithmetic
+  there, route it through `to_plain` too.
 
 ## Configuration
 
@@ -153,7 +198,8 @@ Following the phased plan in the project spec:
 - **Paper trading** and, only after that, **demo broker execution** with
   manual approval — per the spec, never automated live execution as a
   first step.
-- **Frontend dashboard** (Next.js + TradingView Lightweight Charts) and a
-  **WebSocket** layer for live updates.
+- **Live candlestick charts** (TradingView Lightweight Charts, framework-
+  agnostic) and a **WebSocket** layer for live price/scan updates, instead
+  of the current click-to-scan model.
 - **Celery/Redis** for scheduled background scanning instead of
   synchronous on-request scans.

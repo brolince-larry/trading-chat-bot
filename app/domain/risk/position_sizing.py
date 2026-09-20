@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_DOWN, Decimal
 
 from app.domain.market.models import SymbolSpec
+from app.domain.risk.decimal_utils import to_plain
 from app.domain.risk.pip_value import pip_value_per_unit
 
 
@@ -47,15 +48,15 @@ def calculate_position_size(
     if stop_distance <= 0:
         raise ValueError("entry_price and stop_loss_price cannot be equal")
 
-    risk_amount = account_balance * (risk_percent / Decimal("100"))
-    stop_distance_pips = stop_distance / symbol.pip_size
+    risk_amount = to_plain(account_balance * (risk_percent / Decimal("100")))
+    stop_distance_pips = to_plain(stop_distance / symbol.pip_size)
 
     pip_value = pip_value_per_unit(symbol, account_currency, quote_to_account_rate)
     loss_per_unit = stop_distance_pips * pip_value
     if loss_per_unit <= 0:
         raise ValueError("Computed loss per unit is not positive; check inputs")
 
-    raw_units = risk_amount / loss_per_unit
+    raw_units = to_plain(risk_amount / loss_per_unit)
     raw_lots = raw_units / symbol.contract_size
 
     lot_steps = (raw_lots / symbol.lot_step).to_integral_value(rounding=ROUND_DOWN)
@@ -78,7 +79,7 @@ def calculate_position_size(
         )
         lots = symbol.max_lot
 
-    units = lots * symbol.contract_size
+    units = to_plain(lots * symbol.contract_size)
 
     return PositionSizeResult(
         symbol=symbol.name,
