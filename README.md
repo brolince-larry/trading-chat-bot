@@ -254,8 +254,6 @@ Following the phased plan in the project spec:
 - **Demo broker execution** with manual approval, only after paper
   trading has been run long enough to trust the strategies — per the
   spec, never automated live execution as a first step.
-- **Live candlestick charts** (TradingView Lightweight Charts,
-  framework-agnostic) on the Pair Analysis and Live Prices pages.
 - **Multi-instance scaling**: the current WebSocket broadcast manager and
   background loop are in-process, correct for a single API instance.
   Scaling to multiple instances would need the broadcast layer backed by
