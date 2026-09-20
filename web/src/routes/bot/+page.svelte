@@ -3,6 +3,7 @@
 	import { api, ApiError } from '$lib/api/client';
 	import type { SymbolOut } from '$lib/api/types';
 	import { toggleInSet } from '$lib/helpers';
+	import BotScanPanel from '$lib/components/BotScanPanel.svelte';
 
 	const STRATEGIES = [
 		{
@@ -79,7 +80,7 @@
 
 <svelte:head><title>Trading Bot — Forex AI Market Scanner</title></svelte:head>
 
-<div class="flex max-w-3xl flex-col gap-6">
+<div class="flex max-w-6xl flex-col gap-6">
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-xl font-semibold">Trading Bot</h1>
@@ -107,11 +108,13 @@
 		</label>
 	</div>
 
+	<BotScanPanel />
+
 	{#if loading}
 		<p class="text-sm text-slate-500">Loading…</p>
 	{:else}
 		<div
-			class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+			class="max-w-3xl rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 		>
 			<h2 class="mb-3 text-sm font-semibold">Strategies</h2>
 			<div class="flex flex-col gap-3">
@@ -133,7 +136,7 @@
 		</div>
 
 		<div
-			class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+			class="max-w-3xl rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 		>
 			<h2 class="mb-3 text-sm font-semibold">Trading Pairs</h2>
 			<div class="flex flex-wrap gap-2">

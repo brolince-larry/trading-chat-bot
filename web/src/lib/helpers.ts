@@ -1,3 +1,21 @@
+import type { ScannedCandidateOut } from './api/types';
+
+export type BotVerdict = 'enter_long' | 'enter_short' | 'watch' | 'no_setup';
+
+/**
+ * Collapses a scanned candidate's status+direction into a single symbolic
+ * verdict — the only "outcome" the AI scan reports. Deliberately not a
+ * sentence: the domain layer already decided rejected/watching/confirmed
+ * and long/short/none, so this just names the combination.
+ */
+export function deriveVerdict(candidate: ScannedCandidateOut): BotVerdict {
+	const { status, direction } = candidate.setup;
+	if (status === 'confirmed' && direction === 'long') return 'enter_long';
+	if (status === 'confirmed' && direction === 'short') return 'enter_short';
+	if (status === 'watching') return 'watch';
+	return 'no_setup';
+}
+
 // Small framework-agnostic helpers kept out of .svelte files so plain
 // built-in Map/Set usage here isn't flagged by svelte/prefer-svelte-reactivity
 // (that rule assumes any Map/Set in a .svelte file is meant to be reactive
