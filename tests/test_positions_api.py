@@ -105,6 +105,23 @@ def test_double_close_returns_404(client: TestClient):
     assert second.status_code == 404
 
 
+def test_update_stops_moves_stop_loss(client: TestClient):
+    opened = _open_sample_position(client)
+    entry = float(opened["entry_price"])
+
+    updated = client.patch(
+        f"/api/v1/positions/{opened['id']}", json={"stop_loss": f"{entry - 0.0010:.5f}"}
+    )
+    assert updated.status_code == 200
+    assert updated.json()["stop_loss"] == f"{entry - 0.0010:.5f}"
+
+
+def test_update_stops_requires_at_least_one_field(client: TestClient):
+    opened = _open_sample_position(client)
+    response = client.patch(f"/api/v1/positions/{opened['id']}", json={})
+    assert response.status_code == 422
+
+
 def test_performance_stats_reflects_closed_positions(client: TestClient):
     opened = _open_sample_position(client)
     client.post(f"/api/v1/positions/{opened['id']}/close", json={"close_price": "1.1100"})

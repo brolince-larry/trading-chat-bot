@@ -36,6 +36,11 @@ class ClosePositionRequest(BaseModel):
     close_price: Decimal | None = Field(default=None, gt=0)
 
 
+class UpdateStopsRequest(BaseModel):
+    stop_loss: Decimal | None = Field(default=None, gt=0)
+    take_profit: Decimal | None = Field(default=None, gt=0)
+
+
 class PositionOut(BaseModel):
     id: str
     symbol: str

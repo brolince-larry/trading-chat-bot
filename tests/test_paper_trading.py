@@ -219,6 +219,43 @@ def test_close_position_raises_if_already_closed(repo):
         service.close_position(position.id)
 
 
+def test_update_stops_moves_stop_loss_and_take_profit(repo):
+    provider = FakePriceProvider(Decimal("1.1010"), Decimal("1.1012"))
+    service = PaperTradingService(repo, provider)
+    position = _open_long(service, "1.1000", "1.0950", "1.1100")
+
+    updated = service.update_stops(position.id, stop_loss=Decimal("1.0980"), take_profit=Decimal("1.1150"))
+
+    assert updated.stop_loss == Decimal("1.0980")
+    assert updated.take_profit == Decimal("1.1150")
+
+
+def test_update_stops_rejects_stop_already_passed(repo):
+    provider = FakePriceProvider(Decimal("1.1010"), Decimal("1.1012"))
+    service = PaperTradingService(repo, provider)
+    position = _open_long(service, "1.1000", "1.0950", "1.1100")
+
+    with pytest.raises(PaperTradingError, match="stop-loss"):
+        service.update_stops(position.id, stop_loss=Decimal("1.1050"))
+
+
+def test_update_stops_rejects_no_fields(repo):
+    provider = FakePriceProvider(Decimal("1.1010"), Decimal("1.1012"))
+    service = PaperTradingService(repo, provider)
+    position = _open_long(service, "1.1000", "1.0950", "1.1100")
+
+    with pytest.raises(PaperTradingError):
+        service.update_stops(position.id)
+
+
+def test_update_stops_rejects_unknown_position(repo):
+    provider = FakePriceProvider(Decimal("1.1010"), Decimal("1.1012"))
+    service = PaperTradingService(repo, provider)
+
+    with pytest.raises(PaperTradingError):
+        service.update_stops("does-not-exist", stop_loss=Decimal("1.0980"))
+
+
 def test_performance_stats_computes_win_rate_and_expectancy(repo):
     provider = FakePriceProvider(Decimal("1.1010"), Decimal("1.1012"))
     service = PaperTradingService(repo, provider)

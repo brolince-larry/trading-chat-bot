@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.domain.market.data_provider import MarketDataProvider
+from app.domain.news.provider import NewsProvider, NoOpNewsProvider
 from app.domain.scanner.pair_scanner import PairScanner
 from app.domain.trading.paper_trading_service import PaperTradingService
 from app.infrastructure.database.repositories import (
@@ -56,3 +57,11 @@ def get_paper_trading_service(session: Session = Depends(get_db_session)) -> Pap
 
 def get_risk_limits_repository(session: Session = Depends(get_db_session)) -> RiskLimitsRepository:
     return RiskLimitsRepository(session)
+
+
+@lru_cache
+def get_news_provider() -> NewsProvider:
+    # No real news/economic-calendar API is configured yet (see README
+    # roadmap) — NoOpNewsProvider reports itself as not connected rather
+    # than fabricating headlines.
+    return NoOpNewsProvider()

@@ -106,14 +106,33 @@ risk-limit decisions itself.
 - **Configurable risk limits**: max risk/trade, max daily loss, max open
   positions, max spread, min risk/reward, and max correlated exposure are
   persisted settings (`/api/v1/risk/limits`), editable from the dashboard.
+- **Trading sessions & world clock**: real, DST-aware Sydney/Tokyo/London/
+  New York open-closed status and a five-city world clock (New York, London,
+  Lagos/WAT for "Africa time", Tokyo, Sydney), computed with `zoneinfo` — no
+  external API needed — plus a flag for the London/New York, Tokyo/London,
+  and Sydney/Tokyo high-liquidity overlap windows.
+- **News feed port**: a `NewsProvider` port mirrors the market-data pattern.
+  No real news/economic-calendar API is configured yet, so `/api/v1/news`
+  and the dashboard's News panel honestly report "not connected" instead of
+  ever fabricating headlines.
+- **Manual trading UI**: a Trade panel on the Pair Analysis page to manually
+  enter a trade (direction, entry, stop-loss, take-profit, sized by the real
+  risk engine), adjust an open position's stop-loss/take-profit
+  (`PATCH /api/v1/positions/{id}`), a normal "Exit Trade" button, and a
+  emergency "🔥 Fire — Exit Now" button for closing immediately at market if
+  the trade reverses.
 - **API**: `/api/v1/market/*`, `/api/v1/analysis/{symbol}`,
   `/api/v1/scanner/run`, `/api/v1/risk/position-size`, `/api/v1/risk/limits`,
-  `/api/v1/positions*`. See `/docs` for the live OpenAPI schema once running.
+  `/api/v1/positions*`, `/api/v1/sessions`, `/api/v1/news`. See `/docs` for
+  the live OpenAPI schema once running.
 - **Dashboard (8 pages)**: Overview (stat tiles + currency-exposure chart),
   Scanner (live-updating, with an "Open" action per confirmed setup),
-  Pair Analysis, Positions (live P&L tracking), History (closed trades +
-  performance stats), Live Prices, Position Size Calculator, and Risk
-  Settings.
+  Pair Analysis (live candlestick chart with EMA overlays and entry/stop/
+  target price lines, the manual Trade panel, session clock, and news
+  panel — plus a "best market to enter" callout from the scanner's top
+  confirmed candidate), Positions (live P&L tracking), History (closed
+  trades + performance stats), Live Prices, Position Size Calculator, and
+  Risk Settings.
 
 11 major/cross pairs are configured by default (`app/domain/market/symbols.py`).
 
@@ -161,7 +180,7 @@ target a generic container.
 ### Tests
 
 ```bash
-pytest              # backend: 96 tests
+pytest              # backend: 119 tests
 cd web && pnpm run check && pnpm run lint   # frontend: types + lint
 ```
 
@@ -225,7 +244,9 @@ Following the phased plan in the project spec:
 - **Economic calendar / news-risk integration**: currently the scanner's
   "session/news" scoring factor is a neutral placeholder score, clearly
   documented as such in `app/domain/scanner/scoring.py`, until a real
-  calendar feed is wired in.
+  calendar feed is wired in. The `NewsProvider` port (see above) is ready
+  for a real adapter — swap `NoOpNewsProvider` for one backed by an actual
+  news/calendar API and both the score and `/api/v1/news` light up.
 - **Historical backtesting engine** with realistic spread/slippage
   modeling and drawdown/Sharpe metrics — paper trading (now built) tells
   you what's happening going forward; backtesting is still needed to

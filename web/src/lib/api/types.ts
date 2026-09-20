@@ -185,3 +185,47 @@ export interface RiskLimitsOut {
 }
 
 export type RiskLimitsUpdateRequest = RiskLimitsOut;
+
+export interface UpdateStopsRequest {
+	stop_loss?: string | null;
+	take_profit?: string | null;
+}
+
+export interface SessionStatusOut {
+	id: string;
+	label: string;
+	timezone: string;
+	is_open: boolean;
+	local_time: string;
+	next_open_utc: string;
+	next_close_utc: string;
+}
+
+export interface WorldClockEntryOut {
+	label: string;
+	timezone: string;
+	local_time: string;
+	utc_offset: string;
+}
+
+export interface MarketSessionSnapshotOut {
+	generated_at: string;
+	sessions: SessionStatusOut[];
+	world_clock: WorldClockEntryOut[];
+	active_overlaps: string[];
+}
+
+export interface NewsItemOut {
+	headline: string;
+	source: string;
+	published_at: string;
+	url: string | null;
+	symbols: string[];
+	impact: string | null;
+}
+
+export interface NewsFeedOut {
+	connected: boolean;
+	message: string;
+	items: NewsItemOut[];
+}

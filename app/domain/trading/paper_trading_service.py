@@ -116,6 +116,46 @@ class PaperTradingService:
         )
         return self._repo.update(updated)
 
+    def update_stops(
+        self,
+        position_id: str,
+        *,
+        stop_loss: Decimal | None = None,
+        take_profit: Decimal | None = None,
+    ) -> PaperPosition:
+        """Adjust an open position's stop-loss and/or take-profit — e.g. to
+        move a stop to break-even, or set a target that wasn't set at open.
+        At least one of the two must be provided. The new levels are
+        validated against the live price the same way ``open_position``
+        validates the initial ones, so a stop can't be moved to a price the
+        market has already passed.
+        """
+        if stop_loss is None and take_profit is None:
+            raise PaperTradingError("Provide at least one of stop_loss or take_profit to update.")
+
+        position = self._repo.get(position_id)
+        if position is None:
+            raise PaperTradingError(f"No position found with id {position_id}.")
+        if not position.status.is_open:
+            raise PaperTradingError(f"Position {position_id} is already closed.")
+
+        new_stop = stop_loss if stop_loss is not None else position.stop_loss
+        new_target = take_profit if take_profit is not None else position.take_profit
+
+        current_price = self._entry_side_price(position.symbol, position.direction)
+        sign = Decimal(1) if position.direction is Direction.LONG else Decimal(-1)
+        if (current_price - new_stop) * sign <= 0:
+            raise PaperTradingError(
+                "Cannot set stop-loss: the live price is already past that level."
+            )
+        if new_target is not None and (new_target - current_price) * sign <= 0:
+            raise PaperTradingError(
+                "Cannot set take-profit: the live price has already reached that level."
+            )
+
+        updated = replace(position, stop_loss=new_stop, take_profit=new_target)
+        return self._repo.update(updated)
+
     def check_and_close_triggered(self) -> list[PaperPosition]:
         """Check every open position against the current price and close
         any that have hit their stop-loss or take-profit — the "tracking"

@@ -15,6 +15,7 @@ from app.schemas.positions import (
     OpenPositionRequest,
     PerformanceStatsOut,
     PositionOut,
+    UpdateStopsRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,21 @@ def open_position(
             units=request.units,
             account_currency=request.account_currency,
             pip_value_per_unit=request.pip_value_per_unit,
+        )
+    except PaperTradingError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    return PositionOut.from_domain(position)
+
+
+@router.patch("/{position_id}", response_model=PositionOut)
+def update_position_stops(
+    position_id: str,
+    request: UpdateStopsRequest,
+    service: PaperTradingService = Depends(get_paper_trading_service),
+) -> PositionOut:
+    try:
+        position = service.update_stops(
+            position_id, stop_loss=request.stop_loss, take_profit=request.take_profit
         )
     except PaperTradingError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None

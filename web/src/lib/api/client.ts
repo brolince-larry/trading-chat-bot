@@ -2,6 +2,8 @@ import { env } from '$env/dynamic/public';
 import type {
 	ApiErrorBody,
 	CandleOut,
+	MarketSessionSnapshotOut,
+	NewsFeedOut,
 	OpenPositionRequest,
 	PairAnalysisOut,
 	PerformanceStatsOut,
@@ -12,7 +14,8 @@ import type {
 	RiskLimitsOut,
 	RiskLimitsUpdateRequest,
 	ScanResultOut,
-	SymbolOut
+	SymbolOut,
+	UpdateStopsRequest
 } from './types';
 
 const BASE_URL = (env.PUBLIC_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
@@ -89,11 +92,22 @@ export const api = {
 			body: JSON.stringify(closePrice ? { close_price: closePrice } : {})
 		}),
 
+	updatePositionStops: (id: string, payload: UpdateStopsRequest) =>
+		request<PositionOut>(`/api/v1/positions/${id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(payload)
+		}),
+
 	getRiskLimits: () => request<RiskLimitsOut>('/api/v1/risk/limits'),
 
 	updateRiskLimits: (payload: RiskLimitsUpdateRequest) =>
 		request<RiskLimitsOut>('/api/v1/risk/limits', {
 			method: 'PUT',
 			body: JSON.stringify(payload)
-		})
+		}),
+
+	getSessions: () => request<MarketSessionSnapshotOut>('/api/v1/sessions'),
+
+	getNews: (symbol?: string) =>
+		request<NewsFeedOut>(`/api/v1/news${symbol ? `?symbol=${symbol}` : ''}`)
 };
