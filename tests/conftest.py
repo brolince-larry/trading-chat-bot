@@ -6,7 +6,10 @@ from decimal import Decimal
 from typing import Literal
 
 from app.domain.analysis.structure import MarketRegime, TrendDirection
-from app.domain.analysis.timeframe_analysis import TimeframeAnalysis, compute_timeframe_analysis
+from app.domain.analysis.timeframe_analysis import (
+    TimeframeAnalysis,
+    compute_timeframe_analysis,
+)
 from app.domain.market.models import Candle, Timeframe
 from app.domain.strategies.base import Direction
 

@@ -22,7 +22,7 @@ class TimeframeAnalysisOut(BaseModel):
     resistance_levels: list[float]
 
     @classmethod
-    def from_domain(cls, analysis: TimeframeAnalysis) -> "TimeframeAnalysisOut":
+    def from_domain(cls, analysis: TimeframeAnalysis) -> TimeframeAnalysisOut:
         return cls(
             timeframe=analysis.timeframe,
             last_close=analysis.last_close,

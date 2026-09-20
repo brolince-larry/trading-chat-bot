@@ -41,14 +41,14 @@ def calculate_position_size(
 ) -> PositionSizeResult:
     if account_balance <= 0:
         raise ValueError("account_balance must be positive")
-    if not (Decimal("0") < risk_percent <= Decimal("100")):
+    if not (Decimal(0) < risk_percent <= Decimal(100)):
         raise ValueError("risk_percent must be between 0 and 100")
 
     stop_distance = abs(entry_price - stop_loss_price)
     if stop_distance <= 0:
         raise ValueError("entry_price and stop_loss_price cannot be equal")
 
-    risk_amount = to_plain(account_balance * (risk_percent / Decimal("100")))
+    risk_amount = to_plain(account_balance * (risk_percent / Decimal(100)))
     stop_distance_pips = to_plain(stop_distance / symbol.pip_size)
 
     pip_value = pip_value_per_unit(symbol, account_currency, quote_to_account_rate)
@@ -71,7 +71,7 @@ def calculate_position_size(
             f"{symbol.min_lot} lots for the requested risk. Increase risk percent, "
             "account size, or accept the broker minimum with higher effective risk."
         )
-        lots = Decimal("0")
+        lots = Decimal(0)
     elif lots > symbol.max_lot:
         warnings.append(
             f"Calculated size ({lots} lots) exceeds the broker maximum of "

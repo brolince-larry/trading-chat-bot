@@ -29,7 +29,7 @@ class TradeSetupOut(BaseModel):
     warnings: list[str]
 
     @classmethod
-    def from_domain(cls, setup: TradeSetup) -> "TradeSetupOut":
+    def from_domain(cls, setup: TradeSetup) -> TradeSetupOut:
         return cls(
             symbol=setup.symbol,
             strategy=setup.strategy_name,
@@ -54,7 +54,7 @@ class ScannedCandidateOut(BaseModel):
     spread_pips: Decimal | None
 
     @classmethod
-    def from_domain(cls, candidate: ScannedCandidate) -> "ScannedCandidateOut":
+    def from_domain(cls, candidate: ScannedCandidate) -> ScannedCandidateOut:
         return cls(
             setup=TradeSetupOut.from_domain(candidate.setup),
             quality_score=candidate.quality_score,
@@ -84,7 +84,7 @@ class ScanResultOut(BaseModel):
     currency_exposure: list[CurrencyExposureOut]
 
     @classmethod
-    def from_domain(cls, result: ScanResult) -> "ScanResultOut":
+    def from_domain(cls, result: ScanResult) -> ScanResultOut:
         return cls(
             scanned_at=result.scanned_at,
             symbols_scanned=result.symbols_scanned,

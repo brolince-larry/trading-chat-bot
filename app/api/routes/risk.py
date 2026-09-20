@@ -1,12 +1,32 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.deps import get_risk_limits_repository
 from app.domain.market.symbols import get_symbol
 from app.domain.risk.position_sizing import calculate_position_size
-from app.schemas.risk import PositionSizeRequest, PositionSizeResponseOut
+from app.infrastructure.database.repositories import RiskLimitsRepository
+from app.schemas.risk import (
+    PositionSizeRequest,
+    PositionSizeResponseOut,
+    RiskLimitsOut,
+    RiskLimitsUpdateRequest,
+)
 
 router = APIRouter(prefix="/risk", tags=["risk"])
+
+
+@router.get("/limits", response_model=RiskLimitsOut)
+def get_risk_limits(repo: RiskLimitsRepository = Depends(get_risk_limits_repository)) -> RiskLimitsOut:
+    return RiskLimitsOut.from_domain(repo.get())
+
+
+@router.put("/limits", response_model=RiskLimitsOut)
+def update_risk_limits(
+    request: RiskLimitsUpdateRequest, repo: RiskLimitsRepository = Depends(get_risk_limits_repository)
+) -> RiskLimitsOut:
+    saved = repo.save(request.to_domain())
+    return RiskLimitsOut.from_domain(saved)
 
 
 @router.post("/position-size", response_model=PositionSizeResponseOut)

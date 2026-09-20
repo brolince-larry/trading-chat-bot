@@ -1,12 +1,13 @@
 # Forex AI Market Scanner
 
-A deterministic forex market-analysis, strategy, and risk-management engine
-(FastAPI backend + SvelteKit dashboard). This is the Phase 1-6
-"quantitative trading platform" core described in the project spec:
-**reliable market data → deterministic analysis → tested strategies → risk
-engine → pair scanner**, with a lightweight dashboard on top. It
-intentionally does not include an LLM/chat layer or broker execution yet —
-see [Roadmap](#roadmap).
+A deterministic forex market-analysis, strategy, risk-management, and
+**paper-trading** engine (FastAPI backend + SvelteKit dashboard), with
+live WebSocket updates for scanning, prices, and position tracking. This
+is the Phase 1-6 "quantitative trading platform" core described in the
+project spec, extended into Phase 9 (paper trading): **reliable market
+data → deterministic analysis → tested strategies → risk engine → pair
+scanner → live tracking**. It intentionally does not include an LLM/chat
+layer or real broker execution yet — see [Roadmap](#roadmap).
 
 **Backend: FastAPI (Python).** Kept from the original build — genuinely
 lightweight (async ASGI, minimal overhead) for this workload, where the
@@ -29,9 +30,10 @@ be connected to a live trading account without independent review.
 ```
 web/                    # SvelteKit dashboard
 ├── src/lib/api/         # Typed fetch client + TypeScript types mirroring app/schemas
-├── src/lib/components/  # Shared UI (TimeframeCard, etc.)
+├── src/lib/ws.ts        # Reconnecting WebSocket client helper
+├── src/lib/components/  # Shared UI (TimeframeCard, ExposureChart, ...)
 ├── src/lib/format.ts    # Display formatting helpers
-└── src/routes/          # / (scanner), /analysis/[symbol], /risk (position size)
+└── src/routes/          # 8 pages — see "What's implemented" below
 
 app/
 ├── domain/            # Pure business logic, no framework/IO dependencies
@@ -39,14 +41,15 @@ app/
 │   ├── analysis/        # Indicators, swing/trend/regime detection, TimeframeAnalysis
 │   ├── strategies/       # Trend-pullback, breakout-retest, range-reversion strategies
 │   ├── risk/            # Pip value, position sizing, exposure, risk-limit validation
-│   └── scanner/         # Setup quality scoring + multi-pair PairScanner orchestrator
+│   ├── scanner/         # Setup quality scoring + multi-pair PairScanner orchestrator
+│   └── trading/         # PaperPosition model + PaperTradingService (open/close/track/stats)
 ├── infrastructure/     # Adapters implementing domain ports
 │   ├── market_data/     # SimulatedMarketDataProvider (dev/test), OandaMarketDataProvider
-│   └── database/        # SQLAlchemy models, session, repositories
-├── api/                # FastAPI routes (thin — delegate to domain services)
+│   └── database/        # SQLAlchemy models, session, repositories (SQLite by default)
+├── api/                # FastAPI routes (thin), WebSocket channels, background loop
 ├── schemas/            # Pydantic request/response DTOs
 ├── config.py           # Settings (env-driven)
-└── main.py             # App entrypoint
+└── main.py             # App entrypoint (starts the background loop on startup)
 ```
 
 This follows the dependency-inversion rule from the spec: `app.domain`
@@ -91,9 +94,26 @@ risk-limit decisions itself.
   a higher (context) and entry timeframe, scores each actionable setup
   0-100 on objective factors (this is a **setup quality score, not a win
   probability**), and ranks candidates.
+- **Paper trading**: open a simulated position from a confirmed candidate
+  (sized via the real risk engine — never a hardcoded lot size); a
+  background loop checks every open position against live prices every
+  few seconds and auto-closes it on stop-loss or take-profit, exactly like
+  a real execution/monitoring service would; a performance-stats endpoint
+  computes win rate, expectancy (R), and profit factor from closed trades.
+- **Live updates**: `/ws/scanner`, `/ws/prices`, and `/ws/positions`
+  WebSocket channels, driven by an asyncio background loop (no Celery/Redis
+  needed at this scale — see [Roadmap](#roadmap)).
+- **Configurable risk limits**: max risk/trade, max daily loss, max open
+  positions, max spread, min risk/reward, and max correlated exposure are
+  persisted settings (`/api/v1/risk/limits`), editable from the dashboard.
 - **API**: `/api/v1/market/*`, `/api/v1/analysis/{symbol}`,
-  `/api/v1/scanner/run`, `/api/v1/risk/position-size`. See `/docs` for the
-  live OpenAPI schema once running.
+  `/api/v1/scanner/run`, `/api/v1/risk/position-size`, `/api/v1/risk/limits`,
+  `/api/v1/positions*`. See `/docs` for the live OpenAPI schema once running.
+- **Dashboard (8 pages)**: Overview (stat tiles + currency-exposure chart),
+  Scanner (live-updating, with an "Open" action per confirmed setup),
+  Pair Analysis, Positions (live P&L tracking), History (closed trades +
+  performance stats), Live Prices, Position Size Calculator, and Risk
+  Settings.
 
 11 major/cross pairs are configured by default (`app/domain/market/symbols.py`).
 
@@ -102,20 +122,17 @@ risk-limit decisions itself.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-cp .env.example .env   # defaults to the simulated provider, no DB required to serve most endpoints
+cp .env.example .env   # SQLite + simulated provider by default — no external services needed
 uvicorn app.main:app --reload
 ```
 
+This also starts the background loop that drives the WebSocket channels
+(re-scanning every 5s, re-pricing/checking positions every 2s — tune via
+`BACKGROUND_SCAN_INTERVAL_SECONDS` / `BACKGROUND_PRICE_INTERVAL_SECONDS`).
 Open `http://localhost:8000/docs` for interactive API docs, or:
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/scanner/run | jq
-```
-
-### With Docker Compose (Postgres included)
-
-```bash
-docker compose up --build
 ```
 
 ### Frontend dashboard
@@ -128,15 +145,23 @@ pnpm run dev --open
 ```
 
 Requires the backend running on `http://localhost:8000` (its CORS default
-already allows the SvelteKit dev server at `http://localhost:5173`). Three
-pages: the scanner dashboard (`/`), a pair's higher/entry timeframe
-analysis (`/analysis/[symbol]`), and the position-size calculator
-(`/risk`).
+already allows the SvelteKit dev server at `http://localhost:5173`).
+
+### With Docker Compose (backend + frontend + Postgres)
+
+```bash
+docker compose up --build
+```
+
+Runs the API on `:8000` (against Postgres — override `DATABASE_URL` to
+keep SQLite instead) and the dashboard on `:3000`. The frontend's
+production build uses `@sveltejs/adapter-node`, since `adapter-auto` can't
+target a generic container.
 
 ### Tests
 
 ```bash
-pytest              # backend: 75 tests
+pytest              # backend: 96 tests
 cd web && pnpm run check && pnpm run lint   # frontend: types + lint
 ```
 
@@ -144,8 +169,10 @@ The backend suite covers indicator math, structure/regime classification,
 all three strategies' decision boundaries (reject/watch/confirm, both
 directions), pip value and position sizing edge cases (including a
 Decimal-serialization regression — see Known gotchas below), risk-limit
-validation, the scanner end to end against the simulated provider, and the
-API layer.
+validation and persistence, paper-trading open/close/auto-close/stats
+logic, the positions and risk-limits API routes against an isolated SQLite
+DB per test, the scanner end to end against the simulated provider, and
+the rest of the API layer.
 
 ### Known gotchas
 
@@ -162,13 +189,19 @@ API layer.
 All settings are environment-driven (see `.env.example`); `app/config.py`
 is the single place they're read. Notably:
 
+- `DATABASE_URL` defaults to a local SQLite file (`sqlite:///./forex_ai.db`)
+  — zero infrastructure to run. Point it at a `postgresql+psycopg://` URL
+  (as `docker-compose.yml` does) for production; repositories are written
+  to be dialect-agnostic.
 - `MARKET_DATA_PROVIDER=simulated` (default) needs no credentials.
 - `MARKET_DATA_PROVIDER=oanda` requires `OANDA_API_KEY`. The key is read
   only from settings/environment and is never logged, returned in an API
   response, or passed to an LLM.
-- The database is optional for the analysis/scanner/risk endpoints, which
-  are pure in-memory computation. `init_db()` degrades gracefully (logs a
-  warning, doesn't crash the app) if Postgres isn't reachable at startup.
+- The database is optional for the analysis/scanner/risk-calculation
+  endpoints, which are pure in-memory computation. `init_db()` degrades
+  gracefully (logs a warning, doesn't crash the app) if the configured
+  database isn't reachable at startup — positions/risk-limits persistence
+  would be degraded, everything else keeps working.
 
 ## Security notes
 
@@ -186,20 +219,24 @@ is the single place they're read. Notably:
 Following the phased plan in the project spec:
 
 - **AI chat layer**: an LLM with function-calling access to
-  `scan_all_pairs`, `get_pair_analysis`, `calculate_position_size`, etc.,
-  that explains structured output in natural language — never inventing
-  numbers itself.
+  `scan_all_pairs`, `get_pair_analysis`, `calculate_position_size`,
+  `open_position`, etc., that explains structured output in natural
+  language — never inventing numbers itself.
 - **Economic calendar / news-risk integration**: currently the scanner's
   "session/news" scoring factor is a neutral placeholder score, clearly
   documented as such in `app/domain/scanner/scoring.py`, until a real
   calendar feed is wired in.
-- **Backtesting engine** with realistic spread/slippage modeling and the
-  standard performance metrics (expectancy, profit factor, drawdown).
-- **Paper trading** and, only after that, **demo broker execution** with
-  manual approval — per the spec, never automated live execution as a
-  first step.
-- **Live candlestick charts** (TradingView Lightweight Charts, framework-
-  agnostic) and a **WebSocket** layer for live price/scan updates, instead
-  of the current click-to-scan model.
-- **Celery/Redis** for scheduled background scanning instead of
-  synchronous on-request scans.
+- **Historical backtesting engine** with realistic spread/slippage
+  modeling and drawdown/Sharpe metrics — paper trading (now built) tells
+  you what's happening going forward; backtesting is still needed to
+  validate a strategy against history before trusting it.
+- **Demo broker execution** with manual approval, only after paper
+  trading has been run long enough to trust the strategies — per the
+  spec, never automated live execution as a first step.
+- **Live candlestick charts** (TradingView Lightweight Charts,
+  framework-agnostic) on the Pair Analysis and Live Prices pages.
+- **Multi-instance scaling**: the current WebSocket broadcast manager and
+  background loop are in-process, correct for a single API instance.
+  Scaling to multiple instances would need the broadcast layer backed by
+  Redis pub/sub and the background loop moved to a single leader (or a
+  proper task queue like Celery/APScheduler-with-locking).

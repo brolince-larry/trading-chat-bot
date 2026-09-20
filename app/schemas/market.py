@@ -18,7 +18,7 @@ class SymbolOut(BaseModel):
     max_lot: Decimal
 
     @classmethod
-    def from_domain(cls, spec: SymbolSpec) -> "SymbolOut":
+    def from_domain(cls, spec: SymbolSpec) -> SymbolOut:
         return cls(
             name=spec.name,
             base_currency=spec.base_currency,
@@ -39,7 +39,7 @@ class CandleOut(BaseModel):
     volume: Decimal
 
     @classmethod
-    def from_domain(cls, candle: Candle) -> "CandleOut":
+    def from_domain(cls, candle: Candle) -> CandleOut:
         return cls(
             timestamp=candle.timestamp,
             open=candle.open,
@@ -58,7 +58,7 @@ class PriceOut(BaseModel):
     timestamp: datetime
 
     @classmethod
-    def from_domain(cls, price: Price, pip_size: Decimal) -> "PriceOut":
+    def from_domain(cls, price: Price, pip_size: Decimal) -> PriceOut:
         return cls(
             symbol=price.symbol,
             bid=price.bid,

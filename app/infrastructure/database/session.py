@@ -20,7 +20,13 @@ _session_factory: sessionmaker[Session] | None = None
 def get_engine() -> Engine:
     global _engine
     if _engine is None:
-        _engine = create_engine(get_settings().database_url, pool_pre_ping=True)
+        url = get_settings().database_url
+        # SQLite connections are single-thread by default; FastAPI's sync
+        # routes and the background asyncio loop each touch the DB from
+        # different threads, so this needs relaxing. Safe here because each
+        # request/task still gets its own Session from the factory below.
+        connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
+        _engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
     return _engine
 
 
@@ -37,6 +43,18 @@ def get_db() -> Generator[Session, None, None]:
         yield session
     finally:
         session.close()
+
+
+def reset_engine() -> None:
+    """Drop the cached engine/session factory so the next call to
+    :func:`get_engine` re-reads settings.database_url. Used by tests that
+    need an isolated database; not called in normal operation.
+    """
+    global _engine, _session_factory
+    if _engine is not None:
+        _engine.dispose()
+    _engine = None
+    _session_factory = None
 
 
 def init_db() -> bool:

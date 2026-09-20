@@ -30,7 +30,7 @@ class RiskLimits:
 class RiskCheckContext:
     account_balance: Decimal
     proposed_risk_percent: Decimal
-    daily_loss_so_far: Decimal = Decimal("0")
+    daily_loss_so_far: Decimal = Decimal(0)
     open_positions_count: int = 0
     current_spread_pips: Decimal | None = None
     risk_reward: float | None = None
@@ -43,7 +43,12 @@ class RiskCheckResult:
     violations: list[str] = field(default_factory=list)
 
 
-def validate_trade_risk(context: RiskCheckContext, limits: RiskLimits = RiskLimits()) -> RiskCheckResult:
+_DEFAULT_RISK_LIMITS = RiskLimits()
+
+
+def validate_trade_risk(
+    context: RiskCheckContext, limits: RiskLimits = _DEFAULT_RISK_LIMITS
+) -> RiskCheckResult:
     violations: list[str] = []
 
     if context.proposed_risk_percent > limits.max_risk_per_trade_percent:
@@ -52,9 +57,9 @@ def validate_trade_risk(context: RiskCheckContext, limits: RiskLimits = RiskLimi
             f"per-trade limit of {limits.max_risk_per_trade_percent}%."
         )
 
-    proposed_risk_amount = context.account_balance * (context.proposed_risk_percent / Decimal("100"))
+    proposed_risk_amount = context.account_balance * (context.proposed_risk_percent / Decimal(100))
     projected_daily_loss = context.daily_loss_so_far + proposed_risk_amount
-    max_daily_loss_amount = context.account_balance * (limits.max_daily_loss_percent / Decimal("100"))
+    max_daily_loss_amount = context.account_balance * (limits.max_daily_loss_percent / Decimal(100))
     if projected_daily_loss > max_daily_loss_amount:
         violations.append(
             f"Taking this trade would bring today's realized+at-risk loss to "

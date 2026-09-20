@@ -27,6 +27,20 @@ _GRANULARITY_MAP: dict[Timeframe, str] = {
     Timeframe.D1: "D",
 }
 
+def _parse_oanda_timestamp(value: str) -> datetime:
+    """OANDA timestamps are RFC3339 with up to nanosecond precision and a
+    trailing 'Z' (e.g. ``2024-01-01T00:00:00.123456789Z``).
+    ``datetime.fromisoformat`` handles 'Z' natively since Python 3.11 but
+    only up to microsecond precision, so the fractional part is truncated
+    first.
+    """
+    if "." in value:
+        head, _, fraction_and_zone = value.partition(".")
+        fraction = fraction_and_zone.rstrip("Z")[:6].ljust(6, "0")
+        value = f"{head}.{fraction}Z"
+    return datetime.fromisoformat(value)
+
+
 _PRACTICE_BASE_URL = "https://api-fxpractice.oanda.com"
 _LIVE_BASE_URL = "https://api-fxtrade.oanda.com"
 
@@ -59,7 +73,7 @@ class OandaMarketDataProvider(MarketDataProvider):
                 Candle(
                     symbol=symbol,
                     timeframe=timeframe,
-                    timestamp=datetime.fromisoformat(raw["time"].replace("Z", "+00:00")),
+                    timestamp=_parse_oanda_timestamp(raw["time"]),
                     open=Decimal(mid["o"]),
                     high=Decimal(mid["h"]),
                     low=Decimal(mid["l"]),

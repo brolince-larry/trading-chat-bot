@@ -2,67 +2,58 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/api/client';
-	import type { ScanResultOut } from '$lib/api/types';
-	import {
-		directionColor,
-		exposureColor,
-		formatDateTime,
-		formatPrice,
-		statusColor
-	} from '$lib/format';
+	import type { PerformanceStatsOut, PositionOut, ScanResultOut } from '$lib/api/types';
+	import { connectLiveSocket } from '$lib/ws';
+	import { formatMoney, pnlColor } from '$lib/format';
+	import ExposureChart from '$lib/components/ExposureChart.svelte';
 
-	let result = $state<ScanResultOut | null>(null);
-	let loading = $state(false);
+	let openPositions = $state<PositionOut[]>([]);
+	let stats = $state<PerformanceStatsOut | null>(null);
+	let scan = $state<ScanResultOut | null>(null);
 	let error = $state<string | null>(null);
-	let minScore = $state(0);
+	let loading = $state(true);
 
-	async function runScan() {
-		loading = true;
-		error = null;
-		try {
-			result = await api.runScan({ min_quality_score: minScore || undefined });
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : 'Something went wrong running the scan.';
-		} finally {
-			loading = false;
-		}
-	}
+	const unrealizedTotal = $derived(
+		openPositions.reduce((sum, p) => sum + (p.unrealized_pnl ? Number(p.unrealized_pnl) : 0), 0)
+	);
+	const activeSetups = $derived(
+		scan ? scan.candidates.filter((c) => c.setup.status !== 'rejected').length : 0
+	);
+	const confirmedSetups = $derived(
+		scan ? scan.candidates.filter((c) => c.setup.status === 'confirmed').length : 0
+	);
 
-	onMount(runScan);
+	onMount(() => {
+		Promise.all([api.listPositions('open'), api.getPositionStats(), api.runScan()])
+			.then(([positions, performance, scanResult]) => {
+				openPositions = positions;
+				stats = performance;
+				scan = scanResult;
+			})
+			.catch((err) => {
+				error = err instanceof ApiError ? err.message : 'Could not load the overview.';
+			})
+			.finally(() => {
+				loading = false;
+			});
+
+		const stopPositions = connectLiveSocket<PositionOut[]>('/ws/positions', (data) => {
+			openPositions = data;
+		});
+		const stopScanner = connectLiveSocket<ScanResultOut>('/ws/scanner', (data) => {
+			scan = data;
+		});
+		return () => {
+			stopPositions();
+			stopScanner();
+		};
+	});
 </script>
 
-<svelte:head><title>Scanner — Forex AI Market Scanner</title></svelte:head>
+<svelte:head><title>Overview — Forex AI Market Scanner</title></svelte:head>
 
 <div class="flex flex-col gap-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<div>
-			<h1 class="text-xl font-semibold">Pair Scanner</h1>
-			{#if result}
-				<p class="text-sm text-slate-500">
-					Scanned {result.symbols_scanned} pairs at {formatDateTime(result.scanned_at)}
-				</p>
-			{/if}
-		</div>
-		<div class="flex items-center gap-3">
-			<label class="flex items-center gap-2 text-sm text-slate-500">
-				Min score
-				<input
-					type="number"
-					min="0"
-					max="100"
-					bind:value={minScore}
-					class="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-				/>
-			</label>
-			<button
-				onclick={runScan}
-				disabled={loading}
-				class="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-slate-900"
-			>
-				{loading ? 'Scanning…' : 'Run Scan'}
-			</button>
-		</div>
-	</div>
+	<h1 class="text-xl font-semibold">Overview</h1>
 
 	{#if error}
 		<div
@@ -72,95 +63,53 @@
 		</div>
 	{/if}
 
-	{#if result}
-		{#if result.currency_exposure.length > 0}
-			<div class="flex flex-wrap items-center gap-2">
-				<span class="text-sm text-slate-500">Currency exposure:</span>
-				{#each result.currency_exposure as exposure (exposure.currency)}
-					<span
-						class="rounded-full px-2.5 py-1 text-xs font-medium {exposureColor(exposure.level)}"
-					>
-						{exposure.currency}
-						{exposure.net_position_count > 0 ? '+' : ''}{exposure.net_position_count}
-					</span>
-				{/each}
-			</div>
-		{/if}
-
-		{#if result.candidates.length === 0}
-			<p
-				class="rounded border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900"
+	{#if loading}
+		<p class="text-sm text-slate-500">Loading…</p>
+	{:else}
+		<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+			<a
+				href={resolve('/positions')}
+				class="rounded border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
 			>
-				No actionable setups right now. That's a normal, expected outcome — not every scan should
-				produce a trade.
-			</p>
-		{:else}
-			<div class="overflow-x-auto rounded border border-slate-200 dark:border-slate-800">
-				<table class="w-full min-w-[900px] text-sm">
-					<thead class="bg-slate-100 text-left text-xs text-slate-500 uppercase dark:bg-slate-900">
-						<tr>
-							<th class="px-3 py-2">Pair</th>
-							<th class="px-3 py-2">Strategy</th>
-							<th class="px-3 py-2">Direction</th>
-							<th class="px-3 py-2">Status</th>
-							<th class="px-3 py-2">Score</th>
-							<th class="px-3 py-2">Entry</th>
-							<th class="px-3 py-2">Stop</th>
-							<th class="px-3 py-2">Take Profit</th>
-							<th class="px-3 py-2">R:R</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-						{#each result.candidates as candidate (candidate.setup.symbol + candidate.setup.strategy)}
-							<tr class="hover:bg-slate-50 dark:hover:bg-slate-900/60">
-								<td class="px-3 py-2 font-medium">
-									<a
-										href={resolve('/analysis/[symbol]', { symbol: candidate.setup.symbol })}
-										class="hover:underline"
-									>
-										{candidate.setup.symbol}
-									</a>
-								</td>
-								<td class="px-3 py-2 text-slate-500"
-									>{candidate.setup.strategy.replace('_', ' ')}</td
-								>
-								<td
-									class="px-3 py-2 font-medium capitalize {directionColor(
-										candidate.setup.direction
-									)}"
-								>
-									{candidate.setup.direction}
-								</td>
-								<td class="px-3 py-2">
-									<span
-										class="rounded-full px-2.5 py-1 text-xs font-medium {statusColor(
-											candidate.setup.status
-										)}"
-									>
-										{candidate.setup.status}
-									</span>
-								</td>
-								<td class="px-3 py-2 font-medium">{candidate.quality_score}</td>
-								<td class="px-3 py-2 tabular-nums">{formatPrice(candidate.setup.entry_price)}</td>
-								<td class="px-3 py-2 tabular-nums">{formatPrice(candidate.setup.stop_loss)}</td>
-								<td class="px-3 py-2 tabular-nums">
-									{candidate.setup.take_profits.map((tp) => formatPrice(tp.price)).join(' / ') ||
-										'—'}
-								</td>
-								<td class="px-3 py-2 tabular-nums">
-									{candidate.setup.risk_reward ? candidate.setup.risk_reward.toFixed(2) : '—'}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+				<p class="text-xs text-slate-400">Open positions</p>
+				<p class="text-2xl font-semibold tabular-nums">{openPositions.length}</p>
+			</a>
+			<div
+				class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+			>
+				<p class="text-xs text-slate-400">Unrealized P&L</p>
+				<p class="text-2xl font-semibold tabular-nums {pnlColor(unrealizedTotal)}">
+					{formatMoney(unrealizedTotal)}
+				</p>
 			</div>
-		{/if}
+			<a
+				href={resolve('/history')}
+				class="rounded border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+			>
+				<p class="text-xs text-slate-400">Total realized P&L</p>
+				<p
+					class="text-2xl font-semibold tabular-nums {pnlColor(stats?.total_realized_pnl ?? null)}"
+				>
+					{stats ? formatMoney(stats.total_realized_pnl) : '—'}
+				</p>
+			</a>
+			<a
+				href={resolve('/scanner')}
+				class="rounded border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+			>
+				<p class="text-xs text-slate-400">Active setups</p>
+				<p class="text-2xl font-semibold tabular-nums">
+					{activeSetups}
+					<span class="text-sm font-normal text-slate-400">({confirmedSetups} confirmed)</span>
+				</p>
+			</a>
+		</div>
 
-		{#if result.skipped.length > 0}
-			<p class="text-xs text-slate-400">
-				Skipped: {result.skipped.map((s) => `${s.symbol} (${s.reason})`).join(', ')}
-			</p>
-		{/if}
+		<div
+			class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+		>
+			<h2 class="mb-3 text-sm font-medium text-slate-500">Currency Exposure</h2>
+			<ExposureChart exposures={scan?.currency_exposure ?? []} />
+		</div>
 	{/if}
 </div>

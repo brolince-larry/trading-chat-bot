@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     app_name: str = "Forex AI Market Scanner"
     environment: str = "development"
 
-    database_url: str = "postgresql+psycopg://forex:forex@localhost:5432/forex_ai"
+    # SQLite by default: zero infrastructure to run locally. Set to a
+    # postgresql+psycopg:// URL (see docker-compose.yml) for production.
+    database_url: str = "sqlite:///./forex_ai.db"
 
     market_data_provider: str = "simulated"  # "simulated" | "oanda"
     oanda_api_key: str | None = None
@@ -28,6 +30,11 @@ class Settings(BaseSettings):
     default_risk_percent: float = 1.0
 
     cors_allowed_origins: list[str] = ["http://localhost:5173"]
+
+    # How often the background loop re-scans the market and re-checks open
+    # paper positions against live prices, in seconds.
+    background_scan_interval_seconds: float = 5.0
+    background_price_interval_seconds: float = 2.0
 
 
 @lru_cache

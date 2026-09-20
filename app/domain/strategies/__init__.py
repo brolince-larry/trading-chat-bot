@@ -1,4 +1,10 @@
-from app.domain.strategies.base import Direction, SetupStatus, Strategy, TakeProfitLevel, TradeSetup
+from app.domain.strategies.base import (
+    Direction,
+    SetupStatus,
+    Strategy,
+    TakeProfitLevel,
+    TradeSetup,
+)
 from app.domain.strategies.breakout_retest import BreakoutRetestStrategy
 from app.domain.strategies.range_reversion import RangeReversionStrategy
 from app.domain.strategies.trend_pullback import TrendPullbackStrategy

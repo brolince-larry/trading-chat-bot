@@ -6,7 +6,12 @@ from app.domain.risk.exposure import (
 )
 from app.domain.risk.pip_value import pip_value_per_unit
 from app.domain.risk.position_sizing import PositionSizeResult, calculate_position_size
-from app.domain.risk.validation import RiskCheckContext, RiskCheckResult, RiskLimits, validate_trade_risk
+from app.domain.risk.validation import (
+    RiskCheckContext,
+    RiskCheckResult,
+    RiskLimits,
+    validate_trade_risk,
+)
 
 __all__ = [
     "CurrencyExposure",

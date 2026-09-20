@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from app.domain.analysis.structure import MarketRegime
 from app.domain.analysis.timeframe_analysis import TimeframeAnalysis
-from app.domain.strategies.base import Direction, SetupStatus, Strategy, TakeProfitLevel, TradeSetup
+from app.domain.strategies.base import (
+    Direction,
+    SetupStatus,
+    Strategy,
+    TakeProfitLevel,
+    TradeSetup,
+)
 
 BOUNDARY_TOLERANCE_ATR_MULTIPLE = 0.4
 RSI_OVERBOUGHT = 65.0

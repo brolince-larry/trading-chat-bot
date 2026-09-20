@@ -35,7 +35,7 @@ def test_pip_value_uses_provided_conversion_rate():
 
 def test_pip_value_never_serializes_in_scientific_notation():
     eur_usd = get_symbol("EUR_USD")
-    value = pip_value_per_unit(eur_usd, account_currency="EUR", quote_to_account_rate=Decimal("500"))
+    value = pip_value_per_unit(eur_usd, account_currency="EUR", quote_to_account_rate=Decimal(500))
     assert "E" not in str(value)
 
 
@@ -45,15 +45,15 @@ def test_pip_value_never_serializes_in_scientific_notation():
 def test_position_size_basic_usd_account_eur_usd():
     eur_usd = get_symbol("EUR_USD")
     result = calculate_position_size(
-        account_balance=Decimal("10000"),
-        risk_percent=Decimal("1"),
+        account_balance=Decimal(10000),
+        risk_percent=Decimal(1),
         entry_price=Decimal("1.1000"),
         stop_loss_price=Decimal("1.0950"),
         symbol=eur_usd,
         account_currency="USD",
     )
     assert result.risk_amount == Decimal("100.00")
-    assert result.stop_distance_pips == Decimal("50")
+    assert result.stop_distance_pips == Decimal(50)
     assert result.lots == Decimal("0.2")
     assert result.meets_minimum_lot is True
     assert result.warnings == []
@@ -62,14 +62,14 @@ def test_position_size_basic_usd_account_eur_usd():
 def test_position_size_below_broker_minimum_returns_zero_with_warning():
     eur_usd = get_symbol("EUR_USD")
     result = calculate_position_size(
-        account_balance=Decimal("100"),
+        account_balance=Decimal(100),
         risk_percent=Decimal("0.1"),
         entry_price=Decimal("1.1000"),
         stop_loss_price=Decimal("1.0950"),
         symbol=eur_usd,
         account_currency="USD",
     )
-    assert result.lots == Decimal("0")
+    assert result.lots == Decimal(0)
     assert result.meets_minimum_lot is False
     assert result.warnings
 
@@ -78,8 +78,8 @@ def test_position_size_rejects_equal_entry_and_stop():
     eur_usd = get_symbol("EUR_USD")
     with pytest.raises(ValueError):
         calculate_position_size(
-            account_balance=Decimal("10000"),
-            risk_percent=Decimal("1"),
+            account_balance=Decimal(10000),
+            risk_percent=Decimal(1),
             entry_price=Decimal("1.1000"),
             stop_loss_price=Decimal("1.1000"),
             symbol=eur_usd,
@@ -93,8 +93,8 @@ def test_position_size_never_serializes_pip_distance_in_scientific_notation():
     # an API response that would read "5E+1 pips" instead of "50 pips".
     eur_usd = get_symbol("EUR_USD")
     result = calculate_position_size(
-        account_balance=Decimal("10000"),
-        risk_percent=Decimal("1"),
+        account_balance=Decimal(10000),
+        risk_percent=Decimal(1),
         entry_price=Decimal("1.1"),
         stop_loss_price=Decimal("1.095"),
         symbol=eur_usd,
@@ -110,8 +110,8 @@ def test_position_size_rejects_invalid_risk_percent():
     eur_usd = get_symbol("EUR_USD")
     with pytest.raises(ValueError):
         calculate_position_size(
-            account_balance=Decimal("10000"),
-            risk_percent=Decimal("0"),
+            account_balance=Decimal(10000),
+            risk_percent=Decimal(0),
             entry_price=Decimal("1.1000"),
             stop_loss_price=Decimal("1.0950"),
             symbol=eur_usd,
@@ -152,8 +152,8 @@ def test_currency_exposure_ignores_flat_positions():
 
 def test_validate_trade_risk_passes_within_all_limits():
     context = RiskCheckContext(
-        account_balance=Decimal("10000"),
-        proposed_risk_percent=Decimal("1"),
+        account_balance=Decimal(10000),
+        proposed_risk_percent=Decimal(1),
         risk_reward=2.0,
     )
     result = validate_trade_risk(context)
@@ -162,26 +162,26 @@ def test_validate_trade_risk_passes_within_all_limits():
 
 
 def test_validate_trade_risk_flags_excessive_per_trade_risk():
-    context = RiskCheckContext(account_balance=Decimal("10000"), proposed_risk_percent=Decimal("5"))
-    result = validate_trade_risk(context, RiskLimits(max_risk_per_trade_percent=Decimal("1")))
+    context = RiskCheckContext(account_balance=Decimal(10000), proposed_risk_percent=Decimal(5))
+    result = validate_trade_risk(context, RiskLimits(max_risk_per_trade_percent=Decimal(1)))
     assert result.passed is False
     assert any("per-trade limit" in v for v in result.violations)
 
 
 def test_validate_trade_risk_flags_daily_loss_limit():
     context = RiskCheckContext(
-        account_balance=Decimal("10000"),
-        proposed_risk_percent=Decimal("1"),
-        daily_loss_so_far=Decimal("290"),
+        account_balance=Decimal(10000),
+        proposed_risk_percent=Decimal(1),
+        daily_loss_so_far=Decimal(290),
     )
-    result = validate_trade_risk(context, RiskLimits(max_daily_loss_percent=Decimal("3")))
+    result = validate_trade_risk(context, RiskLimits(max_daily_loss_percent=Decimal(3)))
     assert result.passed is False
     assert any("daily" in v.lower() for v in result.violations)
 
 
 def test_validate_trade_risk_flags_too_many_open_positions():
     context = RiskCheckContext(
-        account_balance=Decimal("10000"), proposed_risk_percent=Decimal("1"), open_positions_count=5
+        account_balance=Decimal(10000), proposed_risk_percent=Decimal(1), open_positions_count=5
     )
     result = validate_trade_risk(context, RiskLimits(max_open_positions=5))
     assert result.passed is False
@@ -189,26 +189,26 @@ def test_validate_trade_risk_flags_too_many_open_positions():
 
 def test_validate_trade_risk_flags_excessive_spread():
     context = RiskCheckContext(
-        account_balance=Decimal("10000"),
-        proposed_risk_percent=Decimal("1"),
-        current_spread_pips=Decimal("5"),
+        account_balance=Decimal(10000),
+        proposed_risk_percent=Decimal(1),
+        current_spread_pips=Decimal(5),
     )
-    result = validate_trade_risk(context, RiskLimits(max_spread_pips=Decimal("3")))
+    result = validate_trade_risk(context, RiskLimits(max_spread_pips=Decimal(3)))
     assert result.passed is False
 
 
 def test_validate_trade_risk_flags_low_risk_reward():
-    context = RiskCheckContext(account_balance=Decimal("10000"), proposed_risk_percent=Decimal("1"), risk_reward=1.0)
+    context = RiskCheckContext(account_balance=Decimal(10000), proposed_risk_percent=Decimal(1), risk_reward=1.0)
     result = validate_trade_risk(context, RiskLimits(min_risk_reward=Decimal("1.5")))
     assert result.passed is False
 
 
 def test_validate_trade_risk_can_fail_on_multiple_violations_simultaneously():
     context = RiskCheckContext(
-        account_balance=Decimal("10000"),
-        proposed_risk_percent=Decimal("10"),
+        account_balance=Decimal(10000),
+        proposed_risk_percent=Decimal(10),
         open_positions_count=10,
-        current_spread_pips=Decimal("10"),
+        current_spread_pips=Decimal(10),
         risk_reward=0.5,
     )
     result = validate_trade_risk(context)

@@ -14,7 +14,11 @@ from app.domain.analysis.timeframe_analysis import compute_timeframe_analysis
 from app.domain.market.data_provider import MarketDataProvider
 from app.domain.market.models import Timeframe
 from app.domain.market.symbols import get_symbol
-from app.domain.risk.exposure import CurrencyExposure, PositionExposure, calculate_currency_exposure
+from app.domain.risk.exposure import (
+    CurrencyExposure,
+    PositionExposure,
+    calculate_currency_exposure,
+)
 from app.domain.scanner.scoring import score_setup
 from app.domain.strategies import ALL_STRATEGIES
 from app.domain.strategies.base import SetupStatus, Strategy, TradeSetup

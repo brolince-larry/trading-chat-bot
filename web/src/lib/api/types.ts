@@ -128,3 +128,60 @@ export interface PositionSizeResponseOut {
 export interface ApiErrorBody {
 	detail: string | { msg: string; loc: (string | number)[] }[];
 }
+
+export type PositionStatus = 'open' | 'closed_take_profit' | 'closed_stop_loss' | 'closed_manual';
+
+export interface OpenPositionRequest {
+	symbol: string;
+	strategy: string;
+	direction: Direction;
+	entry_price: string;
+	stop_loss: string;
+	take_profit?: string | null;
+	lots: string;
+	units: string;
+	account_currency?: string;
+	pip_value_per_unit: string;
+}
+
+export interface PositionOut {
+	id: string;
+	symbol: string;
+	strategy: string;
+	direction: Direction;
+	status: PositionStatus;
+	entry_price: string;
+	stop_loss: string;
+	take_profit: string | null;
+	lots: string;
+	units: string;
+	account_currency: string;
+	opened_at: string;
+	closed_at: string | null;
+	close_price: string | null;
+	realized_pnl: string | null;
+	risk_multiple: string | null;
+	unrealized_pnl: string | null;
+}
+
+export interface PerformanceStatsOut {
+	closed_count: number;
+	win_count: number;
+	loss_count: number;
+	win_rate: number | null;
+	total_realized_pnl: string;
+	average_r_multiple: number | null;
+	expectancy_r: number | null;
+	profit_factor: number | null;
+}
+
+export interface RiskLimitsOut {
+	max_risk_per_trade_percent: string;
+	max_daily_loss_percent: string;
+	max_open_positions: number;
+	max_spread_pips: string;
+	max_correlated_exposure: ExposureLevel;
+	min_risk_reward: string | null;
+}
+
+export type RiskLimitsUpdateRequest = RiskLimitsOut;

@@ -55,7 +55,7 @@ class TradeSetup:
         return self.status in (SetupStatus.WATCHING, SetupStatus.CONFIRMED)
 
     @classmethod
-    def rejected(cls, symbol: str, strategy_name: str, reason: str) -> "TradeSetup":
+    def rejected(cls, symbol: str, strategy_name: str, reason: str) -> TradeSetup:
         return cls(
             symbol=symbol,
             strategy_name=strategy_name,

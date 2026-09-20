@@ -7,8 +7,13 @@
 	let { children } = $props();
 
 	const navItems = [
-		{ href: resolve('/'), label: 'Scanner' },
-		{ href: resolve('/risk'), label: 'Position Size' }
+		{ href: resolve('/'), label: 'Overview' },
+		{ href: resolve('/scanner'), label: 'Scanner' },
+		{ href: resolve('/positions'), label: 'Positions' },
+		{ href: resolve('/history'), label: 'History' },
+		{ href: resolve('/prices'), label: 'Prices' },
+		{ href: resolve('/risk'), label: 'Position Size' },
+		{ href: resolve('/settings'), label: 'Settings' }
 	];
 </script>
 
@@ -16,10 +21,10 @@
 
 <div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
 	<header class="border-b border-slate-200 dark:border-slate-800">
-		<div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
+		<div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
 			<a href={resolve('/')} class="text-lg font-semibold tracking-tight">Forex AI Market Scanner</a
 			>
-			<nav class="flex gap-4 text-sm">
+			<nav class="flex flex-wrap gap-4 text-sm">
 				{#each navItems as item (item.href)}
 					<a
 						href={item.href}

@@ -2,10 +2,15 @@ import { env } from '$env/dynamic/public';
 import type {
 	ApiErrorBody,
 	CandleOut,
+	OpenPositionRequest,
 	PairAnalysisOut,
+	PerformanceStatsOut,
+	PositionOut,
 	PositionSizeRequest,
 	PositionSizeResponseOut,
 	PriceOut,
+	RiskLimitsOut,
+	RiskLimitsUpdateRequest,
 	ScanResultOut,
 	SymbolOut
 } from './types';
@@ -64,6 +69,31 @@ export const api = {
 	calculatePositionSize: (payload: PositionSizeRequest) =>
 		request<PositionSizeResponseOut>('/api/v1/risk/position-size', {
 			method: 'POST',
+			body: JSON.stringify(payload)
+		}),
+
+	listPositions: (status: 'open' | 'closed') =>
+		request<PositionOut[]>(`/api/v1/positions?status=${status}`),
+
+	getPositionStats: () => request<PerformanceStatsOut>('/api/v1/positions/stats'),
+
+	openPosition: (payload: OpenPositionRequest) =>
+		request<PositionOut>('/api/v1/positions/open', {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		}),
+
+	closePosition: (id: string, closePrice?: string) =>
+		request<PositionOut>(`/api/v1/positions/${id}/close`, {
+			method: 'POST',
+			body: JSON.stringify(closePrice ? { close_price: closePrice } : {})
+		}),
+
+	getRiskLimits: () => request<RiskLimitsOut>('/api/v1/risk/limits'),
+
+	updateRiskLimits: (payload: RiskLimitsUpdateRequest) =>
+		request<RiskLimitsOut>('/api/v1/risk/limits', {
+			method: 'PUT',
 			body: JSON.stringify(payload)
 		})
 };

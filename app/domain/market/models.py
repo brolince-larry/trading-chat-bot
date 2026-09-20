@@ -46,9 +46,9 @@ class SymbolSpec:
     base_currency: str
     quote_currency: str
     pip_size: Decimal
-    contract_size: Decimal = Decimal("100000")
+    contract_size: Decimal = Decimal(100000)
     min_lot: Decimal = Decimal("0.01")
-    max_lot: Decimal = Decimal("100")
+    max_lot: Decimal = Decimal(100)
     lot_step: Decimal = Decimal("0.01")
 
     @property
@@ -65,7 +65,7 @@ class Candle:
     high: Decimal
     low: Decimal
     close: Decimal
-    volume: Decimal = Decimal("0")
+    volume: Decimal = Decimal(0)
 
     def __post_init__(self) -> None:
         if self.high < self.low:
