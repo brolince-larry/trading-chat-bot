@@ -16,6 +16,19 @@
 	let stats = $state<PerformanceStatsOut | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let tab = $state<'overview' | 'history'>('overview');
+	let fromDate = $state('');
+	let toDate = $state('');
+
+	const filteredPositions = $derived(
+		positions.filter((p) => {
+			if (!p.closed_at) return false;
+			const closed = p.closed_at.slice(0, 10);
+			if (fromDate && closed < fromDate) return false;
+			if (toDate && closed > toDate) return false;
+			return true;
+		})
+	);
 
 	onMount(async () => {
 		try {
@@ -28,10 +41,29 @@
 	});
 </script>
 
-<svelte:head><title>History — Forex AI Market Scanner</title></svelte:head>
+<svelte:head><title>Reports — Forex AI Market Scanner</title></svelte:head>
 
 <div class="flex flex-col gap-6">
-	<h1 class="text-xl font-semibold">Trade History</h1>
+	<h1 class="text-xl font-semibold">Reports</h1>
+
+	<div class="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+		<button
+			onclick={() => (tab = 'overview')}
+			class="border-b-2 px-3 py-2 text-sm font-medium {tab === 'overview'
+				? 'border-slate-900 dark:border-white'
+				: 'border-transparent text-slate-500'}"
+		>
+			Overview
+		</button>
+		<button
+			onclick={() => (tab = 'history')}
+			class="border-b-2 px-3 py-2 text-sm font-medium {tab === 'history'
+				? 'border-slate-900 dark:border-white'
+				: 'border-transparent text-slate-500'}"
+		>
+			Trade History
+		</button>
+	</div>
 
 	{#if error}
 		<div
@@ -43,31 +75,51 @@
 
 	{#if loading}
 		<p class="text-sm text-slate-500">Loading…</p>
-	{:else}
+	{:else if tab === 'overview'}
 		{#if stats}
 			<div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
 				<div
 					class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 				>
-					<p class="text-xs text-slate-400">Closed trades</p>
+					<p class="text-xs text-slate-400">Total Trades</p>
 					<p class="text-lg font-semibold tabular-nums">{stats.closed_count}</p>
 				</div>
 				<div
 					class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 				>
-					<p class="text-xs text-slate-400">Win rate</p>
-					<p class="text-lg font-semibold tabular-nums">
-						{stats.win_rate !== null ? formatPercent(stats.win_rate * 100) : '—'}
+					<p class="text-xs text-slate-400">Winning Trades</p>
+					<p class="text-lg font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">
+						{stats.win_count} ({stats.win_rate !== null
+							? formatPercent(stats.win_rate * 100)
+							: '—'})
 					</p>
 				</div>
 				<div
 					class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 				>
-					<p class="text-xs text-slate-400">Total realized P&L</p>
+					<p class="text-xs text-slate-400">Losing Trades</p>
+					<p class="text-lg font-semibold text-rose-600 tabular-nums dark:text-rose-400">
+						{stats.loss_count}
+					</p>
+				</div>
+				<div
+					class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+				>
+					<p class="text-xs text-slate-400">Total Profit</p>
 					<p class="text-lg font-semibold tabular-nums {pnlColor(stats.total_realized_pnl)}">
 						{formatMoney(stats.total_realized_pnl)}
 					</p>
 				</div>
+				<div
+					class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+				>
+					<p class="text-xs text-slate-400">Profit Factor</p>
+					<p class="text-lg font-semibold tabular-nums">
+						{stats.profit_factor !== null ? stats.profit_factor.toFixed(2) : '—'}
+					</p>
+				</div>
+			</div>
+			<div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
 				<div
 					class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 				>
@@ -79,19 +131,49 @@
 				<div
 					class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
 				>
-					<p class="text-xs text-slate-400">Profit factor</p>
+					<p class="text-xs text-slate-400">Average R-Multiple</p>
 					<p class="text-lg font-semibold tabular-nums">
-						{stats.profit_factor !== null ? stats.profit_factor.toFixed(2) : '—'}
+						{stats.average_r_multiple !== null ? `${stats.average_r_multiple.toFixed(2)}R` : '—'}
 					</p>
 				</div>
 			</div>
 		{/if}
+	{:else}
+		<div class="flex flex-wrap items-end gap-3">
+			<label class="flex flex-col gap-1 text-xs text-slate-500">
+				From
+				<input
+					type="date"
+					bind:value={fromDate}
+					class="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+				/>
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-slate-500">
+				To
+				<input
+					type="date"
+					bind:value={toDate}
+					class="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+				/>
+			</label>
+			{#if fromDate || toDate}
+				<button
+					onclick={() => {
+						fromDate = '';
+						toDate = '';
+					}}
+					class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
 
-		{#if positions.length === 0}
+		{#if filteredPositions.length === 0}
 			<p
 				class="rounded border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900"
 			>
-				No closed trades yet.
+				No closed trades {fromDate || toDate ? 'in this date range' : 'yet'}.
 			</p>
 		{:else}
 			<div class="overflow-x-auto rounded border border-slate-200 dark:border-slate-800">
@@ -109,7 +191,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-						{#each positions as position (position.id)}
+						{#each filteredPositions as position (position.id)}
 							<tr class="hover:bg-slate-50 dark:hover:bg-slate-900/60">
 								<td class="px-3 py-2 font-medium">{position.symbol}</td>
 								<td class="px-3 py-2 font-medium capitalize {directionColor(position.direction)}">

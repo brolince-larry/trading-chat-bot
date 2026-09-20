@@ -93,13 +93,13 @@
 	});
 </script>
 
-<svelte:head><title>Scanner — Forex AI Market Scanner</title></svelte:head>
+<svelte:head><title>Markets — Forex AI Market Scanner</title></svelte:head>
 
 <div class="flex flex-col gap-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<div>
 			<div class="flex items-center gap-2">
-				<h1 class="text-xl font-semibold">Pair Scanner</h1>
+				<h1 class="text-xl font-semibold">Markets</h1>
 				<span class="flex items-center gap-1.5 text-xs text-slate-500">
 					<span
 						class="h-2 w-2 rounded-full {live

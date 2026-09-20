@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 
+from app.domain.automation.models import TradeAutomationSettings
 from app.domain.market.models import Price
 from app.domain.strategies.base import Direction
 from app.domain.trading.models import PaperPosition, PositionStatus
@@ -254,6 +255,78 @@ def test_update_stops_rejects_unknown_position(repo):
 
     with pytest.raises(PaperTradingError):
         service.update_stops("does-not-exist", stop_loss=Decimal("1.0980"))
+
+
+def test_close_all_closes_every_open_position(repo):
+    provider = FakePriceProvider(Decimal("1.1010"), Decimal("1.1012"))
+    service = PaperTradingService(repo, provider)
+    _open_long(service, "1.1000", "1.0950", "1.1100")
+    _open_long(service, "1.1000", "1.0950", "1.1100")
+
+    closed = service.close_all()
+
+    assert len(closed) == 2
+    assert all(p.status is PositionStatus.CLOSED_MANUAL for p in closed)
+    assert repo.list_open() == []
+
+
+def test_apply_trade_automation_moves_stop_to_breakeven(repo):
+    provider = FakePriceProvider(Decimal("1.1060"), Decimal("1.1062"))
+    service = PaperTradingService(repo, provider)
+    position = _open_long(service, "1.1000", "1.0950", "1.1150")
+
+    settings = TradeAutomationSettings(
+        breakeven_enabled=True, breakeven_at_r=Decimal("1.0"), trailing_stop_enabled=False
+    )
+    adjusted = service.apply_trade_automation(settings)
+
+    assert len(adjusted) == 1
+    assert adjusted[0].stop_loss == Decimal("1.1000")
+    assert repo.get(position.id).stop_loss == Decimal("1.1000")
+
+
+def test_apply_trade_automation_trails_stop_behind_price(repo):
+    provider = FakePriceProvider(Decimal("1.1050"), Decimal("1.1052"))
+    service = PaperTradingService(repo, provider)
+    _open_long(service, "1.1000", "1.0950", "1.1150")
+
+    settings = TradeAutomationSettings(
+        breakeven_enabled=False, trailing_stop_enabled=True, trailing_stop_pips=Decimal(20)
+    )
+    adjusted = service.apply_trade_automation(settings)
+
+    assert len(adjusted) == 1
+    assert adjusted[0].stop_loss == Decimal("1.1030")
+
+
+def test_apply_trade_automation_never_loosens_the_stop(repo):
+    # Price hasn't moved enough for breakeven, and the trailing candidate
+    # (current price - 20 pips = 1.0945) would be worse than the existing
+    # stop (1.0950) — nothing should change.
+    provider = FakePriceProvider(Decimal("1.0965"), Decimal("1.0967"))
+    service = PaperTradingService(repo, provider)
+    position = _open_long(service, "1.1000", "1.0950", "1.1150")
+
+    settings = TradeAutomationSettings(
+        breakeven_enabled=True,
+        breakeven_at_r=Decimal("1.0"),
+        trailing_stop_enabled=True,
+        trailing_stop_pips=Decimal(20),
+    )
+    adjusted = service.apply_trade_automation(settings)
+
+    assert adjusted == []
+    assert repo.get(position.id).stop_loss == Decimal("1.0950")
+
+
+def test_apply_trade_automation_disabled_settings_is_a_noop(repo):
+    provider = FakePriceProvider(Decimal("1.1060"), Decimal("1.1062"))
+    service = PaperTradingService(repo, provider)
+    _open_long(service, "1.1000", "1.0950", "1.1150")
+
+    adjusted = service.apply_trade_automation(TradeAutomationSettings())
+
+    assert adjusted == []
 
 
 def test_performance_stats_computes_win_rate_and_expectancy(repo):

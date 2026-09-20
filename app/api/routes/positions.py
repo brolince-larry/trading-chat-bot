@@ -77,6 +77,13 @@ def update_position_stops(
     return PositionOut.from_domain(position)
 
 
+@router.post("/close-all", response_model=list[PositionOut])
+def close_all_positions(
+    service: PaperTradingService = Depends(get_paper_trading_service),
+) -> list[PositionOut]:
+    return [PositionOut.from_domain(p) for p in service.close_all()]
+
+
 @router.post("/{position_id}/close", response_model=PositionOut)
 def close_position(
     position_id: str,

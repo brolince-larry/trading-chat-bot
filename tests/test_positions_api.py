@@ -122,6 +122,17 @@ def test_update_stops_requires_at_least_one_field(client: TestClient):
     assert response.status_code == 422
 
 
+def test_close_all_closes_every_open_position(client: TestClient):
+    _open_sample_position(client)
+    _open_sample_position(client)
+    assert len(client.get("/api/v1/positions?status=open").json()) == 2
+
+    response = client.post("/api/v1/positions/close-all")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+    assert client.get("/api/v1/positions?status=open").json() == []
+
+
 def test_performance_stats_reflects_closed_positions(client: TestClient):
     opened = _open_sample_position(client)
     client.post(f"/api/v1/positions/{opened['id']}/close", json={"close_price": "1.1100"})

@@ -67,6 +67,7 @@ class RiskLimitsOut(BaseModel):
     max_spread_pips: Decimal
     max_correlated_exposure: ExposureLevel
     min_risk_reward: Decimal | None
+    max_drawdown_percent: Decimal | None
 
     @classmethod
     def from_domain(cls, limits: RiskLimits) -> RiskLimitsOut:
@@ -77,6 +78,7 @@ class RiskLimitsOut(BaseModel):
             max_spread_pips=limits.max_spread_pips,
             max_correlated_exposure=limits.max_correlated_exposure,
             min_risk_reward=limits.min_risk_reward,
+            max_drawdown_percent=limits.max_drawdown_percent,
         )
 
 
@@ -87,6 +89,7 @@ class RiskLimitsUpdateRequest(BaseModel):
     max_spread_pips: Decimal = Field(..., gt=0, le=Decimal(100))
     max_correlated_exposure: ExposureLevel = ExposureLevel.MEDIUM
     min_risk_reward: Decimal | None = Field(default=None, gt=0)
+    max_drawdown_percent: Decimal | None = Field(default=None, gt=0, le=Decimal(100))
 
     def to_domain(self) -> RiskLimits:
         return RiskLimits(
@@ -96,4 +99,5 @@ class RiskLimitsUpdateRequest(BaseModel):
             max_spread_pips=self.max_spread_pips,
             max_correlated_exposure=self.max_correlated_exposure,
             min_risk_reward=self.min_risk_reward,
+            max_drawdown_percent=self.max_drawdown_percent,
         )

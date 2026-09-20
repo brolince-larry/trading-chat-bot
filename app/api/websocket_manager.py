@@ -53,3 +53,4 @@ class ConnectionManager:
 scanner_manager = ConnectionManager()
 price_manager = ConnectionManager()
 position_manager = ConnectionManager()
+notification_manager = ConnectionManager()

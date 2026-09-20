@@ -182,6 +182,7 @@ export interface RiskLimitsOut {
 	max_spread_pips: string;
 	max_correlated_exposure: ExposureLevel;
 	min_risk_reward: string | null;
+	max_drawdown_percent: string | null;
 }
 
 export type RiskLimitsUpdateRequest = RiskLimitsOut;
@@ -228,4 +229,64 @@ export interface NewsFeedOut {
 	connected: boolean;
 	message: string;
 	items: NewsItemOut[];
+}
+
+export interface AccountSettingsOut {
+	starting_balance: string;
+}
+
+export interface EquityPointOut {
+	timestamp: string;
+	balance: string;
+}
+
+export interface PairPerformanceOut {
+	symbol: string;
+	realized_pnl: string;
+	trade_count: number;
+}
+
+export interface AccountSummaryOut {
+	starting_balance: string;
+	balance: string;
+	total_realized_pnl: string;
+	total_unrealized_pnl: string;
+	total_pnl_percent: number;
+	active_trades: number;
+	win_rate: number | null;
+	equity_curve: EquityPointOut[];
+	top_pairs: PairPerformanceOut[];
+}
+
+export type AccountRange = '1d' | '1w' | '1m' | '3m' | '6m' | '1y' | 'all';
+
+export interface BotSettingsOut {
+	enabled: boolean;
+	active_symbols: string[];
+	active_strategies: string[];
+}
+
+export interface TradeAutomationSettingsOut {
+	breakeven_enabled: boolean;
+	breakeven_at_r: string;
+	trailing_stop_enabled: boolean;
+	trailing_stop_pips: string;
+}
+
+export type NotificationType = 'trade_closed' | 'new_signal' | 'risk_alert' | 'bot_update';
+
+export interface HealthOut {
+	status: string;
+	app_name: string;
+	environment: string;
+	market_data_provider: string;
+}
+
+export interface NotificationOut {
+	id: string;
+	type: NotificationType;
+	message: string;
+	symbol: string | null;
+	created_at: string;
+	read: boolean;
 }

@@ -24,6 +24,11 @@ class RiskLimits:
     max_spread_pips: Decimal = Decimal("3.0")
     max_correlated_exposure: ExposureLevel = ExposureLevel.MEDIUM
     min_risk_reward: Decimal | None = Decimal("1.5")
+    # Maximum peak-to-trough drop in account equity before new trades should
+    # be paused. Persisted and surfaced on the Risk Management page; unlike
+    # the other limits here it is not yet enforced against a live open — see
+    # AccountService for the equity curve it would be checked against.
+    max_drawdown_percent: Decimal | None = Decimal("10.0")
 
 
 @dataclass(frozen=True, slots=True)

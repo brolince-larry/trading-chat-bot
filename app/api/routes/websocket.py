@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.api.websocket_manager import position_manager, price_manager, scanner_manager
+from app.api.websocket_manager import (
+    notification_manager,
+    position_manager,
+    price_manager,
+    scanner_manager,
+)
 
 router = APIRouter()
 
@@ -41,3 +46,13 @@ async def ws_positions(websocket: WebSocket) -> None:
             await websocket.receive_text()
     except WebSocketDisconnect:
         await position_manager.disconnect(websocket)
+
+
+@router.websocket("/ws/notifications")
+async def ws_notifications(websocket: WebSocket) -> None:
+    await notification_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await notification_manager.disconnect(websocket)

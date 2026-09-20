@@ -10,6 +10,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from app.domain.automation.models import TradeAutomationSettings
 from app.domain.market.data_provider import MarketDataProvider
 from app.domain.market.symbols import get_symbol
 from app.domain.risk.decimal_utils import to_plain
@@ -156,6 +157,12 @@ class PaperTradingService:
         updated = replace(position, stop_loss=new_stop, take_profit=new_target)
         return self._repo.update(updated)
 
+    def close_all(self) -> list[PaperPosition]:
+        """Close every open position at the current market price — the
+        "panic button" for the whole book, not just one trade.
+        """
+        return [self.close_position(p.id) for p in self._repo.list_open()]
+
     def check_and_close_triggered(self) -> list[PaperPosition]:
         """Check every open position against the current price and close
         any that have hit their stop-loss or take-profit — the "tracking"
@@ -187,6 +194,58 @@ class PaperTradingService:
                     )
                 )
         return closed
+
+    def current_unrealized_r(self, position: PaperPosition) -> Decimal | None:
+        risk = abs(position.entry_price - position.stop_loss)
+        if risk == 0:
+            return None
+        current = self._exit_price(position)
+        sign = Decimal(1) if position.direction is Direction.LONG else Decimal(-1)
+        return to_plain((current - position.entry_price) * sign / risk)
+
+    def apply_trade_automation(self, settings: TradeAutomationSettings) -> list[PaperPosition]:
+        """Move a stop to breakeven once a position reaches
+        ``breakeven_at_r`` R, and/or trail it behind the current price by
+        ``trailing_stop_pips`` — never loosening an existing stop. Returns
+        the positions that were actually adjusted. Automation never opens or
+        closes a trade; it only ever tightens an existing stop-loss.
+        """
+        if not settings.breakeven_enabled and not settings.trailing_stop_enabled:
+            return []
+
+        adjusted: list[PaperPosition] = []
+        for position in self._repo.list_open():
+            sign = Decimal(1) if position.direction is Direction.LONG else Decimal(-1)
+            candidate_stop: Decimal | None = None
+
+            if settings.breakeven_enabled:
+                r = self.current_unrealized_r(position)
+                if (
+                    r is not None
+                    and r >= settings.breakeven_at_r
+                    and (position.entry_price - position.stop_loss) * sign > 0
+                ):
+                    candidate_stop = position.entry_price
+
+            if settings.trailing_stop_enabled:
+                pip_size = get_symbol(position.symbol).pip_size
+                trail_distance = settings.trailing_stop_pips * pip_size
+                current = self._exit_price(position)
+                trailing_stop = current - sign * trail_distance
+                if (trailing_stop - position.stop_loss) * sign > 0 and (
+                    candidate_stop is None or (trailing_stop - candidate_stop) * sign > 0
+                ):
+                    candidate_stop = trailing_stop
+
+            if candidate_stop is None:
+                continue
+            try:
+                adjusted.append(self.update_stops(position.id, stop_loss=to_plain(candidate_stop)))
+            except PaperTradingError:
+                # The live price moved in the same tick this stop would have
+                # landed on — skip this cycle, the next tick will retry.
+                continue
+        return adjusted
 
     def unrealized_pnl(self, position: PaperPosition, current_price: Decimal) -> Decimal:
         pip_size = get_symbol(position.symbol).pip_size

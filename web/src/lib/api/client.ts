@@ -1,9 +1,15 @@
 import { env } from '$env/dynamic/public';
 import type {
+	AccountRange,
+	AccountSettingsOut,
+	AccountSummaryOut,
 	ApiErrorBody,
+	BotSettingsOut,
 	CandleOut,
+	HealthOut,
 	MarketSessionSnapshotOut,
 	NewsFeedOut,
+	NotificationOut,
 	OpenPositionRequest,
 	PairAnalysisOut,
 	PerformanceStatsOut,
@@ -15,6 +21,7 @@ import type {
 	RiskLimitsUpdateRequest,
 	ScanResultOut,
 	SymbolOut,
+	TradeAutomationSettingsOut,
 	UpdateStopsRequest
 } from './types';
 
@@ -50,10 +57,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 		throw new ApiError(response.status, message);
 	}
 
+	if (response.status === 204) {
+		return undefined as T;
+	}
 	return response.json() as Promise<T>;
 }
 
 export const api = {
+	getHealth: () => request<HealthOut>('/api/v1/health'),
+
 	getSymbols: () => request<SymbolOut[]>('/api/v1/market/symbols'),
 
 	getCandles: (symbol: string, timeframe = '1h', count = 200) =>
@@ -109,5 +121,44 @@ export const api = {
 	getSessions: () => request<MarketSessionSnapshotOut>('/api/v1/sessions'),
 
 	getNews: (symbol?: string) =>
-		request<NewsFeedOut>(`/api/v1/news${symbol ? `?symbol=${symbol}` : ''}`)
+		request<NewsFeedOut>(`/api/v1/news${symbol ? `?symbol=${symbol}` : ''}`),
+
+	closeAllPositions: () =>
+		request<PositionOut[]>('/api/v1/positions/close-all', { method: 'POST' }),
+
+	getAccountSummary: (range: AccountRange = '1m') =>
+		request<AccountSummaryOut>(`/api/v1/account/summary?period=${range}`),
+
+	getAccountSettings: () => request<AccountSettingsOut>('/api/v1/account/settings'),
+
+	updateAccountSettings: (payload: AccountSettingsOut) =>
+		request<AccountSettingsOut>('/api/v1/account/settings', {
+			method: 'PUT',
+			body: JSON.stringify(payload)
+		}),
+
+	getBotSettings: () => request<BotSettingsOut>('/api/v1/bot/settings'),
+
+	updateBotSettings: (payload: BotSettingsOut) =>
+		request<BotSettingsOut>('/api/v1/bot/settings', {
+			method: 'PUT',
+			body: JSON.stringify(payload)
+		}),
+
+	getAutomationSettings: () => request<TradeAutomationSettingsOut>('/api/v1/automations/settings'),
+
+	updateAutomationSettings: (payload: TradeAutomationSettingsOut) =>
+		request<TradeAutomationSettingsOut>('/api/v1/automations/settings', {
+			method: 'PUT',
+			body: JSON.stringify(payload)
+		}),
+
+	listNotifications: (unreadOnly = false) =>
+		request<NotificationOut[]>(`/api/v1/notifications${unreadOnly ? '?unread_only=true' : ''}`),
+
+	markNotificationRead: (id: string) =>
+		request<void>(`/api/v1/notifications/${id}/read`, { method: 'POST' }),
+
+	markAllNotificationsRead: () =>
+		request<void>('/api/v1/notifications/read-all', { method: 'POST' })
 };
