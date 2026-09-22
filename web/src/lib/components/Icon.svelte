@@ -20,7 +20,8 @@
 		menu: 'M3 6h18M3 12h18M3 18h18',
 		x: 'M18 6 6 18M6 6l12 12',
 		chevronDown: 'm6 9 6 6 6-6',
-		fire: 'M12 2s-6 6-6 11a6 6 0 0 0 12 0c0-2-1-3-2-4 0 2-1 3-2 3 1-3-1-5-2-10z'
+		fire: 'M12 2s-6 6-6 11a6 6 0 0 0 12 0c0-2-1-3-2-4 0 2-1 3-2 3 1-3-1-5-2-10z',
+		history: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 8v4l3 3'
 	};
 
 	let { name, class: className = 'h-5 w-5' }: { name: string; class?: string } = $props();

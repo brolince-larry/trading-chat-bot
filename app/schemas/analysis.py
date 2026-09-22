@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from app.domain.analysis.candlestick_patterns import (
+    CandlestickPatternName,
+    PatternBias,
+    detect_candlestick_pattern,
+)
 from app.domain.analysis.structure import MarketRegime, TrendDirection
 from app.domain.analysis.timeframe_analysis import TimeframeAnalysis
 from app.domain.market.models import Timeframe
@@ -20,9 +25,12 @@ class TimeframeAnalysisOut(BaseModel):
     regime: MarketRegime
     support_levels: list[float]
     resistance_levels: list[float]
+    candlestick_pattern: CandlestickPatternName | None
+    candlestick_pattern_bias: PatternBias | None
 
     @classmethod
     def from_domain(cls, analysis: TimeframeAnalysis) -> TimeframeAnalysisOut:
+        pattern = detect_candlestick_pattern(analysis.candles)
         return cls(
             timeframe=analysis.timeframe,
             last_close=analysis.last_close,
@@ -36,6 +44,8 @@ class TimeframeAnalysisOut(BaseModel):
             regime=analysis.regime,
             support_levels=analysis.support_levels,
             resistance_levels=analysis.resistance_levels,
+            candlestick_pattern=pattern.name if pattern else None,
+            candlestick_pattern_bias=pattern.bias if pattern else None,
         )
 
 

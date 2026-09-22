@@ -4,6 +4,7 @@ from app.api.routes import (
     account,
     analysis,
     automations,
+    backtest,
     bot,
     health,
     market,
@@ -28,5 +29,6 @@ api_router.include_router(account.router)
 api_router.include_router(bot.router)
 api_router.include_router(automations.router)
 api_router.include_router(notifications.router)
+api_router.include_router(backtest.router)
 
 __all__ = ["api_router"]

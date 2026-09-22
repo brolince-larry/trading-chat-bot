@@ -4,6 +4,8 @@ import type {
 	AccountSettingsOut,
 	AccountSummaryOut,
 	ApiErrorBody,
+	BacktestRequest,
+	BacktestResultOut,
 	BotSettingsOut,
 	CandleOut,
 	HealthOut,
@@ -160,5 +162,11 @@ export const api = {
 		request<void>(`/api/v1/notifications/${id}/read`, { method: 'POST' }),
 
 	markAllNotificationsRead: () =>
-		request<void>('/api/v1/notifications/read-all', { method: 'POST' })
+		request<void>('/api/v1/notifications/read-all', { method: 'POST' }),
+
+	runBacktest: (payload: BacktestRequest) =>
+		request<BacktestResultOut>('/api/v1/backtest/run', {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		})
 };

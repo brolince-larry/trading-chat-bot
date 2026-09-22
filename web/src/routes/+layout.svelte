@@ -23,7 +23,8 @@
 
 	const toolsNav = [
 		{ href: resolve('/prices'), label: 'Live Prices', icon: 'dollar' },
-		{ href: resolve('/risk'), label: 'Position Size', icon: 'calculator' }
+		{ href: resolve('/risk'), label: 'Position Size', icon: 'calculator' },
+		{ href: resolve('/backtest'), label: 'Backtest', icon: 'history' }
 	];
 
 	let mobileNavOpen = $state(false);

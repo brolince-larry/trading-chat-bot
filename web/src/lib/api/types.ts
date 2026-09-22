@@ -6,6 +6,9 @@ export type SetupStatus = 'rejected' | 'watching' | 'confirmed' | 'invalidated';
 export type TrendDirection = 'bullish' | 'bearish' | 'neutral';
 export type MarketRegime = 'trending' | 'ranging' | 'transitioning';
 export type ExposureLevel = 'low' | 'medium' | 'high';
+export type CandlestickPatternName =
+	'doji' | 'hammer' | 'shooting_star' | 'bullish_engulfing' | 'bearish_engulfing';
+export type PatternBias = 'bullish' | 'bearish' | 'neutral';
 
 export interface SymbolOut {
 	name: string;
@@ -47,6 +50,8 @@ export interface TimeframeAnalysisOut {
 	regime: MarketRegime;
 	support_levels: number[];
 	resistance_levels: number[];
+	candlestick_pattern: CandlestickPatternName | null;
+	candlestick_pattern_bias: PatternBias | null;
 }
 
 export interface PairAnalysisOut {
@@ -289,4 +294,60 @@ export interface NotificationOut {
 	symbol: string | null;
 	created_at: string;
 	read: boolean;
+}
+
+export interface BacktestRequest {
+	symbol: string;
+	strategy: string;
+	higher_timeframe?: string;
+	entry_timeframe?: string;
+	lookback_candles?: number;
+	starting_balance?: string;
+	risk_percent?: string;
+	account_currency?: string;
+	quote_to_account_rate?: string | null;
+}
+
+export type ExitReason = 'stop_loss' | 'take_profit' | 'end_of_data';
+
+export interface BacktestTradeOut {
+	direction: Direction;
+	entry_price: string;
+	stop_loss: string;
+	take_profit: string | null;
+	exit_price: string;
+	exit_reason: ExitReason;
+	entered_at: string;
+	exited_at: string;
+	bars_held: number;
+	units: string;
+	pnl: string;
+	r_multiple: string;
+}
+
+export interface BacktestEquityPointOut {
+	timestamp: string;
+	balance: string;
+}
+
+export interface BacktestResultOut {
+	symbol: string;
+	strategy: string;
+	higher_timeframe: string;
+	entry_timeframe: string;
+	starting_balance: string;
+	ending_balance: string;
+	total_return_percent: number;
+	total_trades: number;
+	win_count: number;
+	loss_count: number;
+	win_rate: number | null;
+	profit_factor: number | null;
+	expectancy_r: number | null;
+	average_r_multiple: number | null;
+	max_drawdown_percent: number;
+	largest_win: string | null;
+	largest_loss: string | null;
+	trades: BacktestTradeOut[];
+	equity_curve: BacktestEquityPointOut[];
 }

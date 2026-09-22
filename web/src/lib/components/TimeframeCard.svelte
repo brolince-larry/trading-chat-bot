@@ -15,6 +15,20 @@
 		ranging: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
 		transitioning: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
 	} as const;
+
+	const patternLabel = {
+		doji: 'Doji',
+		hammer: 'Hammer',
+		shooting_star: 'Shooting Star',
+		bullish_engulfing: 'Bullish Engulfing',
+		bearish_engulfing: 'Bearish Engulfing'
+	} as const;
+
+	const patternColor = {
+		bullish: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+		bearish: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+		neutral: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+	} as const;
 </script>
 
 <div class="rounded border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -31,6 +45,15 @@
 			>
 				{analysis.regime}
 			</span>
+			{#if analysis.candlestick_pattern && analysis.candlestick_pattern_bias}
+				<span
+					class="rounded-full px-2 py-0.5 text-xs font-medium {patternColor[
+						analysis.candlestick_pattern_bias
+					]}"
+				>
+					{patternLabel[analysis.candlestick_pattern]}
+				</span>
+			{/if}
 		</div>
 	</div>
 
