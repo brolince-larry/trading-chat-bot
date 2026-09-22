@@ -1,0 +1,43 @@
+services:
+  # Postgres is only needed for a production-like deployment. The api
+  # service defaults to SQLite (see .env.example) and works without it;
+  # set DATABASE_URL below to switch.
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: forex
+      POSTGRES_PASSWORD: forex
+      POSTGRES_DB: forex_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - forex_ai_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forex -d forex_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://forex:forex@db:5432/forex_ai
+      MARKET_DATA_PROVIDER: simulated
+      CORS_ALLOWED_ORIGINS: '["http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    environment:
+      PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  forex_ai_db_data:

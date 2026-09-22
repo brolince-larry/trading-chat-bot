@@ -1,0 +1,15 @@
+[project]
+name = "forex-ai-market-scanner"
+version = "0.1.0"
+description = "Deterministic forex market analysis, strategy, and risk-management API."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff.lint]
+# B008: FastAPI's Depends()/Query()/Body() are designed to be used exactly
+# as call-expression defaults; that's the framework's documented pattern,
+# not the general "mutable default argument" foot-gun this rule targets.
+ignore = ["B008"]
